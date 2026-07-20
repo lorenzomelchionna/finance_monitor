@@ -109,6 +109,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/simulation/montecarlo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Montecarlo */
+        post: operations["montecarlo_api_simulation_montecarlo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -220,6 +237,49 @@ export interface components {
             price: number;
             /** Currency */
             currency: string;
+        };
+        /** MonteCarloRequest */
+        MonteCarloRequest: {
+            /** Seed Capital */
+            seed_capital: number;
+            /** Monthly Contribution */
+            monthly_contribution: number;
+            /** Years */
+            years: number;
+            /** Expected Annual Return */
+            expected_annual_return: number;
+            /** Annual Volatility */
+            annual_volatility: number;
+            /**
+             * N Paths
+             * @default 10000
+             */
+            n_paths: number;
+            /** Random Seed */
+            random_seed?: number | null;
+        };
+        /** MonteCarloResponse */
+        MonteCarloResponse: {
+            /** Months */
+            months: number[];
+            /** P5 */
+            p5: number[];
+            /** P25 */
+            p25: number[];
+            /** P50 */
+            p50: number[];
+            /** P75 */
+            p75: number[];
+            /** P95 */
+            p95: number[];
+            /** Final Mean */
+            final_mean: number;
+            /** Final Median */
+            final_median: number;
+            /** Final P5 */
+            final_p5: number;
+            /** Final P95 */
+            final_p95: number;
         };
         /** PortfolioSummaryOut */
         PortfolioSummaryOut: {
@@ -546,6 +606,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PriceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    montecarlo_api_simulation_montecarlo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MonteCarloRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonteCarloResponse"];
                 };
             };
             /** @description Validation Error */

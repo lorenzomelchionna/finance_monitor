@@ -7,6 +7,8 @@ export type HoldingCreate = components["schemas"]["HoldingCreate"];
 export type HoldingUpdate = components["schemas"]["HoldingUpdate"];
 export type PortfolioSummaryOut = components["schemas"]["PortfolioSummaryOut"];
 export type PriceStatusOut = components["schemas"]["PriceStatusOut"];
+export type MonteCarloRequest = components["schemas"]["MonteCarloRequest"];
+export type MonteCarloResponse = components["schemas"]["MonteCarloResponse"];
 
 const HOLDINGS_KEY = ["holdings"] as const;
 const PORTFOLIO_SUMMARY_KEY = ["portfolio", "summary"] as const;
@@ -119,6 +121,16 @@ export function useSetManualPrice() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
       queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
+    },
+  });
+}
+
+export function useRunMontecarlo() {
+  return useMutation({
+    mutationFn: async (body: MonteCarloRequest) => {
+      const { data, error } = await api.POST("/api/simulation/montecarlo", { body });
+      if (error) throw error;
+      return data;
     },
   });
 }
