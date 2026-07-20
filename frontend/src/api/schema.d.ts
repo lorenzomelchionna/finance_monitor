@@ -57,6 +57,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/portfolio/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Portfolio Summary */
+        get: operations["portfolio_summary_api_portfolio_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/prices/refresh": {
         parameters: {
             query?: never;
@@ -203,6 +220,44 @@ export interface components {
             price: number;
             /** Currency */
             currency: string;
+        };
+        /** PortfolioSummaryOut */
+        PortfolioSummaryOut: {
+            /** Base Currency */
+            base_currency: string;
+            /** Positions */
+            positions: components["schemas"]["PositionOut"][];
+            /** Total Value Base */
+            total_value_base: number;
+            /** Total Cost Base */
+            total_cost_base: number;
+            /** Total Pnl Base */
+            total_pnl_base: number;
+            /** Currency Exposure */
+            currency_exposure: {
+                [key: string]: number;
+            };
+        };
+        /** PositionOut */
+        PositionOut: {
+            /** Instrument Id */
+            instrument_id: number;
+            /** Instrument Name */
+            instrument_name: string;
+            /** Quantity */
+            quantity: number;
+            /** Price Currency */
+            price_currency: string;
+            /** Price Status */
+            price_status: string;
+            /** Value Base */
+            value_base: number | null;
+            /** Cost Base */
+            cost_base: number | null;
+            /** Pnl Base */
+            pnl_base: number | null;
+            /** Exclusion Reason */
+            exclusion_reason: string | null;
         };
         /** PriceOut */
         PriceOut: {
@@ -394,6 +449,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portfolio_summary_api_portfolio_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioSummaryOut"];
                 };
             };
         };

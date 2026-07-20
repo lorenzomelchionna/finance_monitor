@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import holdings, prices
+from app.api import holdings, portfolio, prices
 from app.config import get_settings
 
 settings = get_settings()
@@ -17,6 +17,7 @@ app.add_middleware(
 )
 
 app.include_router(holdings.router)
+app.include_router(portfolio.router)
 app.include_router(prices.router)
 
 

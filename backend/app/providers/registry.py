@@ -11,7 +11,7 @@ import enum
 from sqlmodel import Session
 
 from app.models.instrument import Instrument
-from app.providers.base import InstrumentRef, PriceProvider, PriceQuote
+from app.providers.base import FxProvider, InstrumentRef, PriceProvider, PriceQuote
 from app.providers.manual_provider import ManualPriceProvider
 from app.providers.yfinance_provider import YFinanceProvider
 
@@ -22,8 +22,18 @@ class PriceStatus(str, enum.Enum):
     missing = "missing"  # no price available from any source
 
 
+_yfinance = YFinanceProvider()
+
 _AUTO_PROVIDERS: dict[str, PriceProvider] = {
-    "yfinance": YFinanceProvider(),
+    "yfinance": _yfinance,
+}
+
+# Same instance as _AUTO_PROVIDERS: YFinanceProvider implements both
+# Price and Fx. No manual FX fallback exists in v1 (no data model for
+# it) — an unavailable rate just means the position is excluded from
+# EUR totals (see domain/portfolio.py's "missing_fx" status).
+_FX_PROVIDERS: dict[str, FxProvider] = {
+    "yfinance": _yfinance,
 }
 
 
@@ -53,3 +63,17 @@ def resolve_price(
         return manual_quote, PriceStatus.manual
 
     return None, PriceStatus.missing
+
+
+def resolve_fx_rate(source_currency: str, target_currency: str, provider_name: str) -> float | None:
+    """Units of `target_currency` per 1 unit of `source_currency`, i.e.
+    multiply an amount in `source_currency` by this to get `target_currency`."""
+    if source_currency == target_currency:
+        return 1.0
+
+    provider = _FX_PROVIDERS.get(provider_name)
+    if provider is None:
+        return None
+
+    rate = provider.get_rate(source_currency, target_currency)
+    return rate.rate if rate is not None else None

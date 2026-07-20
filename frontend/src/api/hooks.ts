@@ -5,8 +5,11 @@ import type { components } from "./schema";
 export type HoldingOut = components["schemas"]["HoldingOut"];
 export type HoldingCreate = components["schemas"]["HoldingCreate"];
 export type HoldingUpdate = components["schemas"]["HoldingUpdate"];
+export type PortfolioSummaryOut = components["schemas"]["PortfolioSummaryOut"];
+export type PriceStatusOut = components["schemas"]["PriceStatusOut"];
 
 const HOLDINGS_KEY = ["holdings"] as const;
+const PORTFOLIO_SUMMARY_KEY = ["portfolio", "summary"] as const;
 
 export function useHoldings() {
   return useQuery({
@@ -27,7 +30,10 @@ export function useCreateHolding() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
+      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
+    },
   });
 }
 
@@ -42,7 +48,10 @@ export function useUpdateHolding() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
+      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
+    },
   });
 }
 
@@ -55,6 +64,61 @@ export function useDeleteHolding() {
       });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
+      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
+    },
+  });
+}
+
+export function usePortfolioSummary() {
+  return useQuery({
+    queryKey: PORTFOLIO_SUMMARY_KEY,
+    queryFn: async () => {
+      const { data, error } = await api.GET("/api/portfolio/summary");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useRefreshPrices() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await api.POST("/api/prices/refresh");
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
+      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
+    },
+  });
+}
+
+export function useSetManualPrice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      instrumentId,
+      price,
+      currency,
+    }: {
+      instrumentId: number;
+      price: number;
+      currency: string;
+    }) => {
+      const { data, error } = await api.PUT("/api/prices/{instrument_id}", {
+        params: { path: { instrument_id: instrumentId } },
+        body: { price, currency },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
+      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
+    },
   });
 }

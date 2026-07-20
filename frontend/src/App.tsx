@@ -1,6 +1,7 @@
 import { useState } from "react";
 import "./App.css";
 import { HoldingsView } from "./views/HoldingsView";
+import { DashboardView } from "./views/DashboardView";
 
 type Tab = "holdings" | "dashboard" | "simulation";
 
@@ -29,7 +30,7 @@ function App() {
       </nav>
       <main className="app-main">
         {tab === "holdings" && <HoldingsView />}
-        {tab === "dashboard" && <p className="placeholder">Dashboard — Fase 4.</p>}
+        {tab === "dashboard" && <DashboardView />}
         {tab === "simulation" && <p className="placeholder">Simulazione Monte Carlo — Fase 5.</p>}
       </main>
     </div>
