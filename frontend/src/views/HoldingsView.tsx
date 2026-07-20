@@ -7,6 +7,8 @@ import {
 } from "../api/hooks";
 import { HoldingsTable } from "../components/HoldingsTable";
 import type { components } from "../api/schema";
+import { extractErrorMessage } from "../lib/apiError";
+import { parseLocaleNumber } from "../lib/number";
 
 type AssetClass = components["schemas"]["AssetClass"];
 
@@ -49,6 +51,13 @@ export function HoldingsView() {
       return;
     }
 
+    const quantity = parseLocaleNumber(form.quantity);
+    const avgCostPrice = parseLocaleNumber(form.avgCostPrice);
+    if (Number.isNaN(quantity) || Number.isNaN(avgCostPrice)) {
+      setFormError("Quantità e prezzo di carico devono essere numeri validi.");
+      return;
+    }
+
     try {
       await createHolding.mutateAsync({
         instrument: {
@@ -59,13 +68,13 @@ export function HoldingsView() {
           asset_class: form.assetClass,
           auto_price_enabled: true,
         },
-        quantity: Number(form.quantity),
-        avg_cost_price: Number(form.avgCostPrice),
+        quantity,
+        avg_cost_price: avgCostPrice,
         cost_currency: form.costCurrency,
       });
       setForm(emptyForm);
-    } catch {
-      setFormError("Creazione posizione fallita. Controlla i dati inseriti.");
+    } catch (err) {
+      setFormError(`Creazione posizione fallita: ${extractErrorMessage(err)}`);
     }
   }
 
@@ -107,9 +116,8 @@ export function HoldingsView() {
           <label>
             Quantità
             <input
-              type="number"
-              min={0}
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={form.quantity}
               onChange={(e) => set("quantity", e.target.value)}
             />
@@ -117,9 +125,8 @@ export function HoldingsView() {
           <label>
             Prezzo di carico
             <input
-              type="number"
-              min={0}
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={form.avgCostPrice}
               onChange={(e) => set("avgCostPrice", e.target.value)}
             />

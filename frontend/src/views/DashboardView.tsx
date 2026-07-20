@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { usePortfolioSummary, useRefreshPrices, useSetManualPrice } from "../api/hooks";
 import { CurrencyExposurePie } from "../components/CurrencyExposurePie";
+import { parseLocaleNumber } from "../lib/number";
 
 const STATUS_LABEL: Record<string, string> = {
   ok: "auto",
@@ -86,9 +87,8 @@ export function DashboardView() {
                     {needsManualPrice && (
                       <span className="manual-price-input">
                         <input
-                          type="number"
-                          min={0}
-                          step="any"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="prezzo"
                           value={manualEdits[p.instrument_id] ?? ""}
                           onChange={(e) =>
@@ -98,8 +98,8 @@ export function DashboardView() {
                         <button
                           type="button"
                           onClick={() => {
-                            const value = Number(manualEdits[p.instrument_id]);
-                            if (value > 0) {
+                            const value = parseLocaleNumber(manualEdits[p.instrument_id] ?? "");
+                            if (!Number.isNaN(value) && value > 0) {
                               setManualPrice.mutate({
                                 instrumentId: p.instrument_id,
                                 price: value,

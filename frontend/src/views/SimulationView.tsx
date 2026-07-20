@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { usePortfolioSummary, useRunMontecarlo } from "../api/hooks";
 import { FanChart } from "../components/FanChart";
+import { extractErrorMessage } from "../lib/apiError";
+import { parseLocaleNumber } from "../lib/number";
 
 export function SimulationView() {
   const { data: summary } = usePortfolioSummary();
@@ -11,6 +13,7 @@ export function SimulationView() {
   const [years, setYears] = useState("20");
   const [expectedReturn, setExpectedReturn] = useState("7");
   const [volatility, setVolatility] = useState("15");
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Prefill the seed with the current portfolio value once it loads —
   // per the plan's v1 scope: "seed = valore portafoglio attuale".
@@ -23,14 +26,24 @@ export function SimulationView() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    runMontecarlo.mutate({
-      seed_capital: Number(seedCapital),
-      monthly_contribution: Number(monthlyContribution),
-      years: Number(years),
-      expected_annual_return: Number(expectedReturn) / 100,
-      annual_volatility: Number(volatility) / 100,
-      n_paths: 10000,
-    });
+    setFormError(null);
+
+    const parsed = {
+      seed_capital: parseLocaleNumber(seedCapital),
+      monthly_contribution: parseLocaleNumber(monthlyContribution),
+      years: parseLocaleNumber(years),
+      expected_annual_return: parseLocaleNumber(expectedReturn) / 100,
+      annual_volatility: parseLocaleNumber(volatility) / 100,
+    };
+    if (Object.values(parsed).some((v) => Number.isNaN(v))) {
+      setFormError("Tutti i campi devono essere numeri validi.");
+      return;
+    }
+
+    runMontecarlo.mutate(
+      { ...parsed, n_paths: 10000 },
+      { onError: (err) => setFormError(extractErrorMessage(err)) },
+    );
   }
 
   const result = runMontecarlo.data;
@@ -42,37 +55,34 @@ export function SimulationView() {
         <form className="holding-form" onSubmit={handleSubmit}>
           <label>
             Capitale iniziale (EUR)
-            <input type="number" min={0} step="any" value={seedCapital} onChange={(e) => setSeedCapital(e.target.value)} />
+            <input type="text" inputMode="decimal" value={seedCapital} onChange={(e) => setSeedCapital(e.target.value)} />
           </label>
           <label>
             Contributo mensile (EUR)
             <input
-              type="number"
-              min={0}
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={monthlyContribution}
               onChange={(e) => setMonthlyContribution(e.target.value)}
             />
           </label>
           <label>
             Orizzonte (anni)
-            <input type="number" min={1} max={60} value={years} onChange={(e) => setYears(e.target.value)} />
+            <input type="text" inputMode="numeric" value={years} onChange={(e) => setYears(e.target.value)} />
           </label>
           <label>
             Rendimento atteso (% annuo)
-            <input type="number" step="any" value={expectedReturn} onChange={(e) => setExpectedReturn(e.target.value)} />
+            <input type="text" inputMode="decimal" value={expectedReturn} onChange={(e) => setExpectedReturn(e.target.value)} />
           </label>
           <label>
             Volatilità (% annua)
-            <input type="number" min={0} step="any" value={volatility} onChange={(e) => setVolatility(e.target.value)} />
+            <input type="text" inputMode="decimal" value={volatility} onChange={(e) => setVolatility(e.target.value)} />
           </label>
           <button type="submit" disabled={runMontecarlo.isPending}>
             {runMontecarlo.isPending ? "Simulo…" : "Esegui simulazione"}
           </button>
         </form>
-        {runMontecarlo.isError && (
-          <p className="error-banner">Simulazione fallita. Controlla i parametri.</p>
-        )}
+        {formError && <p className="error-banner">{formError}</p>}
       </section>
 
       {result && (

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { HoldingOut } from "../api/hooks";
+import { parseLocaleNumber } from "../lib/number";
 
 interface Props {
   holdings: HoldingOut[];
@@ -51,7 +52,7 @@ function HoldingRow({
   onUpdateQuantity: (id: number, quantity: number) => void;
   onDelete: (id: number) => void;
 }) {
-  const [quantity, setQuantity] = useState(holding.quantity);
+  const [quantity, setQuantity] = useState(String(holding.quantity));
 
   return (
     <tr>
@@ -60,14 +61,14 @@ function HoldingRow({
       <td>{holding.instrument.ticker ?? "—"}</td>
       <td>
         <input
-          type="number"
+          type="text"
+          inputMode="decimal"
           value={quantity}
-          min={0}
-          step="any"
-          onChange={(e) => setQuantity(Number(e.target.value))}
+          onChange={(e) => setQuantity(e.target.value)}
           onBlur={() => {
-            if (quantity !== holding.quantity && quantity > 0) {
-              onUpdateQuantity(holding.id, quantity);
+            const parsed = parseLocaleNumber(quantity);
+            if (!Number.isNaN(parsed) && parsed > 0 && parsed !== holding.quantity) {
+              onUpdateQuantity(holding.id, parsed);
             }
           }}
         />
