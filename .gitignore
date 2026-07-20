@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# Backend (Python / uv) — beyond backend/.gitignore
+backend/.pytest_cache/
+backend/*.db
+backend/*.db-journal
+backend/.env
