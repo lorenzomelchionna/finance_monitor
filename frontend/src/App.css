@@ -286,3 +286,8 @@
   font-size: 13px;
   color: var(--text-h);
 }
+
+.cost-src {
+  color: #37b24d;
+  font-weight: 700;
+}

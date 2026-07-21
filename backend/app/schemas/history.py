@@ -17,6 +17,7 @@ class InstrumentHistoryOut(BaseModel):
 class PortfolioValuePointOut(BaseModel):
     date: str
     value: float
+    invested: float  # cumulative capital invested as of this date
 
 
 class PortfolioHistoryOut(BaseModel):

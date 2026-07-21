@@ -28,6 +28,12 @@ class HoldingPosition:
     current_price: float | None  # None => no price available anywhere
     price_currency: str
     price_status: str  # "ok" | "manual" | "missing" — passthrough, informational only
+    # Where avg_cost_price came from: "transactions" (derived from the
+    # imported ledger) or "manual" (user-entered on the holding).
+    avg_cost_source: str = "manual"
+    # Money-weighted return for this position (annualized), or None when
+    # not computable (no ledger / single-sign cashflows).
+    xirr: float | None = None
 
 
 @dataclass(frozen=True)
@@ -41,6 +47,8 @@ class PositionValuation:
     cost_base: float | None
     pnl_base: float | None
     exclusion_reason: str | None  # None | "missing_price" | "missing_fx"
+    avg_cost_source: str = "manual"
+    xirr: float | None = None
 
 
 @dataclass(frozen=True)
@@ -51,12 +59,14 @@ class PortfolioSummary:
     total_cost_base: float
     total_pnl_base: float
     currency_exposure: dict[str, float]  # price_currency -> fraction (0..1) of total_value_base
+    xirr: float | None = None  # portfolio-level money-weighted return (annualized)
 
 
 def value_portfolio(
     positions: list[HoldingPosition],
     fx_rates: dict[str, float],
     base_currency: str,
+    portfolio_xirr: float | None = None,
 ) -> PortfolioSummary:
     """fx_rates maps a currency code to "units of base_currency per 1
     unit of that currency" (base_currency itself needs no entry)."""
@@ -78,6 +88,8 @@ def value_portfolio(
                     cost_base=None,
                     pnl_base=None,
                     exclusion_reason="missing_price",
+                    avg_cost_source=pos.avg_cost_source,
+                    xirr=pos.xirr,
                 )
             )
             continue
@@ -97,6 +109,8 @@ def value_portfolio(
                     cost_base=None,
                     pnl_base=None,
                     exclusion_reason="missing_fx",
+                    avg_cost_source=pos.avg_cost_source,
+                    xirr=pos.xirr,
                 )
             )
             continue
@@ -115,6 +129,8 @@ def value_portfolio(
                 cost_base=cost_base,
                 pnl_base=value_base - cost_base,
                 exclusion_reason=None,
+                avg_cost_source=pos.avg_cost_source,
+                xirr=pos.xirr,
             )
         )
         total_value += value_base
@@ -132,4 +148,5 @@ def value_portfolio(
         total_cost_base=total_cost,
         total_pnl_base=total_value - total_cost,
         currency_exposure=currency_exposure,
+        xirr=portfolio_xirr,
     )

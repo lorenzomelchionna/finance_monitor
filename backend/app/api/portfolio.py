@@ -22,6 +22,7 @@ def portfolio_summary(session: Session = Depends(get_session)) -> PortfolioSumma
         total_cost_base=summary.total_cost_base,
         total_pnl_base=summary.total_pnl_base,
         currency_exposure=summary.currency_exposure,
+        xirr=summary.xirr,
     )
 
 

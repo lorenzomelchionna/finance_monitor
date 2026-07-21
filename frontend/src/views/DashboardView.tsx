@@ -37,12 +37,22 @@ export function DashboardView() {
             <span className="summary-value">{summary.total_value_base.toFixed(2)}</span>
           </div>
           <div className="summary-card">
-            <span className="summary-label">Costo totale</span>
+            <span className="summary-label">Capitale investito</span>
             <span className="summary-value">{summary.total_cost_base.toFixed(2)}</span>
           </div>
           <div className="summary-card">
             <span className="summary-label">P/L</span>
             <span className={`summary-value ${pnlClass}`}>{summary.total_pnl_base.toFixed(2)}</span>
+          </div>
+          <div className="summary-card">
+            <span className="summary-label">Rendimento (XIRR)</span>
+            <span
+              className={`summary-value ${
+                summary.xirr != null ? (summary.xirr >= 0 ? "pnl-positive" : "pnl-negative") : ""
+              }`}
+            >
+              {summary.xirr != null ? `${(summary.xirr * 100).toFixed(1)}%` : "—"}
+            </span>
           </div>
         </div>
       </section>
@@ -61,8 +71,10 @@ export function DashboardView() {
               <th>Quantità</th>
               <th>Valuta</th>
               <th>Prezzo</th>
+              <th>Costo</th>
               <th>Valore</th>
               <th>P/L</th>
+              <th>XIRR</th>
               <th></th>
             </tr>
           </thead>
@@ -79,9 +91,16 @@ export function DashboardView() {
                       {STATUS_LABEL[p.price_status] ?? p.price_status}
                     </span>
                   </td>
+                  <td title={p.avg_cost_source === "transactions" ? "Da transazioni Fineco" : "Inserito manualmente"}>
+                    {p.cost_base !== null ? p.cost_base.toFixed(2) : "—"}
+                    {p.avg_cost_source === "transactions" && <span className="cost-src"> ✓</span>}
+                  </td>
                   <td>{p.value_base !== null ? p.value_base.toFixed(2) : "—"}</td>
                   <td className={p.pnl_base !== null && p.pnl_base < 0 ? "pnl-negative" : "pnl-positive"}>
                     {p.pnl_base !== null ? p.pnl_base.toFixed(2) : "—"}
+                  </td>
+                  <td className={p.xirr != null ? (p.xirr >= 0 ? "pnl-positive" : "pnl-negative") : ""}>
+                    {p.xirr != null ? `${(p.xirr * 100).toFixed(1)}%` : "—"}
                   </td>
                   <td>
                     {needsManualPrice && (

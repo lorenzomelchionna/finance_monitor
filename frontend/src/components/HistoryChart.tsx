@@ -1,6 +1,7 @@
 import {
   CartesianGrid,
   ComposedChart,
+  Legend,
   Line,
   ResponsiveContainer,
   Scatter,
@@ -20,6 +21,9 @@ export interface BuyMarker {
 interface Props {
   points: TsPoint[];
   markers?: BuyMarker[];
+  /** Optional cumulative-invested overlay (step line), aligned by date.
+   * Used on the portfolio-aggregate view for "invested vs value". */
+  investedPoints?: TsPoint[];
   /** Unit label for tooltip, e.g. "EUR". */
   unit?: string;
   color?: string;
@@ -37,15 +41,28 @@ function formatDate(iso: string): string {
  * isAnimationActive is off — Recharts' entrance animation never
  * completes in this environment and leaves the chart blank (same gotcha
  * as FanChart / CurrencyExposurePie). */
-export function HistoryChart({ points, markers = [], unit, color = "#3bc9ff" }: Props) {
+export function HistoryChart({
+  points,
+  markers = [],
+  investedPoints,
+  unit,
+  color = "#3bc9ff",
+}: Props) {
   if (points.length === 0) {
     return <p className="placeholder">Nessun dato per l'orizzonte selezionato.</p>;
   }
 
   const markerByDate = new Map(markers.map((m) => [m.date, m]));
+  const investedByDate = new Map((investedPoints ?? []).map((p) => [p.date, p.value]));
   const data = points.map((p) => {
     const m = markerByDate.get(p.date);
-    return { date: p.date, value: p.value, buy: m ? m.value : undefined, marker: m };
+    return {
+      date: p.date,
+      value: p.value,
+      buy: m ? m.value : undefined,
+      marker: m,
+      invested: investedByDate.get(p.date),
+    };
   });
 
   return (
@@ -67,12 +84,27 @@ export function HistoryChart({ points, markers = [], unit, color = "#3bc9ff" }: 
                 return [`${m.quantity} @ ${m.price.toLocaleString("it-IT")} ${unit ?? ""}`.trim(), "Acquisto"];
               }
             }
+            const label = name === "Investito" ? "Investito" : "Valore";
             return [
               `${Number(value).toLocaleString("it-IT", { maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ""}`,
-              "Valore",
+              label,
             ];
           }}
         />
+        <Legend />
+        {investedPoints && investedPoints.length > 0 && (
+          <Line
+            dataKey="invested"
+            stroke="#9aa0aa"
+            strokeWidth={1.5}
+            strokeDasharray="5 4"
+            dot={false}
+            type="stepAfter"
+            isAnimationActive={false}
+            name="Investito"
+            connectNulls
+          />
+        )}
         <Line
           dataKey="value"
           stroke={color}

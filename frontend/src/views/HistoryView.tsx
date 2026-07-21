@@ -49,6 +49,15 @@ export function HistoryView() {
     [rawPoints, horizon, smoothing],
   );
 
+  // Cumulative-invested overlay (portfolio aggregate only). Sliced to the
+  // horizon but never smoothed — it's a capital step function, not a
+  // price to be averaged.
+  const investedPoints: TsPoint[] | undefined = useMemo(() => {
+    if (!data || selection !== "portfolio") return undefined;
+    const raw = data.portfolio.map((p) => ({ date: p.date, value: p.invested }));
+    return sliceByHorizon(raw, horizon);
+  }, [data, selection, horizon]);
+
   // Buy events relevant to the current selection: all buys for the
   // aggregate view, only this instrument's for a single-product view.
   const buys: BuyEvent[] = useMemo(() => {
@@ -150,6 +159,7 @@ export function HistoryView() {
         <HistoryChart
           points={points}
           markers={markers}
+          investedPoints={investedPoints}
           unit={selection === "portfolio" ? baseCurrency : undefined}
         />
         {showBuys && markers.length > 0 && (

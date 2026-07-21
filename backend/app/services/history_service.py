@@ -11,9 +11,11 @@ from collections import defaultdict
 from sqlmodel import Session, select
 
 from app.config import get_settings
-from app.domain.history import aggregate_portfolio_value
+from app.domain.history import actual_portfolio_value, aggregate_portfolio_value
+from app.domain.performance import TxnLike, cumulative_invested
 from app.models.holding import Holding
 from app.models.instrument import Instrument
+from app.models.transaction import Transaction
 from app.providers.registry import resolve_history
 
 
@@ -70,11 +72,45 @@ def get_portfolio_history(session: Session) -> dict:
                 f"(conversione storica {instrument.currency}->{base_currency} non ancora supportata)."
             )
 
-    aggregate = aggregate_portfolio_value(aggregate_input, quantities)
+    aggregated_ids = set(aggregate_input.keys())
+    txn_likes = [
+        TxnLike(
+            instrument_id=t.instrument_id,
+            trade_date=t.trade_date,
+            sign=t.sign.value,
+            quantity=t.quantity,
+            price=t.price,
+            gross_amount=t.gross_amount,
+            commissions=t.commissions,
+        )
+        for t in session.exec(select(Transaction)).all()
+        if t.instrument_id in aggregated_ids
+    ]
+
+    # With a ledger available, reconstruct the *actual* value over time
+    # (quantity held at each date) so it lines up with cumulative
+    # invested. Without transactions, fall back to valuing the fixed
+    # current basket backwards.
+    deltas_by_instrument: dict[int, list[tuple[str, float]]] = defaultdict(list)
+    for t in txn_likes:
+        signed = t.quantity if t.sign == "A" else -t.quantity
+        deltas_by_instrument[t.instrument_id].append((t.trade_date.isoformat(), signed))
+
+    if deltas_by_instrument:
+        aggregate = actual_portfolio_value(aggregate_input, dict(deltas_by_instrument))
+    else:
+        aggregate = aggregate_portfolio_value(aggregate_input, quantities)
+
+    # Cumulative invested capital aligned to the aggregate's dates.
+    aggregate_dates = [vp.date for vp in aggregate]
+    invested = cumulative_invested(txn_likes, aggregate_dates)
 
     return {
         "base_currency": base_currency,
         "series": series_out,
-        "portfolio": [{"date": vp.date, "value": vp.value} for vp in aggregate],
+        "portfolio": [
+            {"date": vp.date, "value": vp.value, "invested": inv}
+            for vp, inv in zip(aggregate, invested)
+        ],
         "warnings": warnings,
     }

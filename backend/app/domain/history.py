@@ -25,6 +25,65 @@ class ValuePoint:
     value: float
 
 
+def actual_portfolio_value(
+    series_by_instrument: dict[int, list[tuple[str, float]]],
+    deltas_by_instrument: dict[int, list[tuple[str, float]]],
+) -> list[ValuePoint]:
+    """Actual portfolio value over time, reconstructing the quantity
+    *actually held* on each date from the transaction ledger (buys add,
+    sells subtract). Unlike aggregate_portfolio_value (which values a
+    fixed current basket backwards), this starts at the first purchase
+    and grows with each contribution + market move — so it lines up with
+    the cumulative-invested series for an honest "invested vs value"
+    view.
+
+    deltas_by_instrument: {instrument_id: [(iso_date, signed_qty), ...]},
+    buy = +qty, sell = -qty. Only instruments present in both maps
+    contribute. Prices are forward-filled from each instrument's last
+    known close."""
+    included = {
+        iid: series
+        for iid, series in series_by_instrument.items()
+        if series and iid in deltas_by_instrument and deltas_by_instrument[iid]
+    }
+    if not included:
+        return []
+
+    # Start at the earliest purchase across the portfolio (min over all
+    # delta dates — the passed lists are not assumed sorted).
+    start_date = min(
+        d for iid in included for (d, _) in deltas_by_instrument[iid]
+    )
+
+    price_lookup = {iid: dict(series) for iid, series in included.items()}
+    all_dates = sorted(
+        {d for series in included.values() for (d, _) in series if d >= start_date}
+    )
+
+    # Pre-sort deltas per instrument for a forward sweep.
+    deltas_sorted = {
+        iid: sorted(deltas_by_instrument[iid], key=lambda x: x[0]) for iid in included
+    }
+    delta_idx = {iid: 0 for iid in included}
+    held_qty = {iid: 0.0 for iid in included}
+    last_close = {iid: 0.0 for iid in included}
+
+    result: list[ValuePoint] = []
+    for date in all_dates:
+        total = 0.0
+        for iid in included:
+            # Advance the held quantity by any trades on/before this date.
+            ds = deltas_sorted[iid]
+            while delta_idx[iid] < len(ds) and ds[delta_idx[iid]][0] <= date:
+                held_qty[iid] += ds[delta_idx[iid]][1]
+                delta_idx[iid] += 1
+            if date in price_lookup[iid]:
+                last_close[iid] = price_lookup[iid][date]
+            total += held_qty[iid] * last_close[iid]
+        result.append(ValuePoint(date=date, value=total))
+    return result
+
+
 def aggregate_portfolio_value(
     series_by_instrument: dict[int, list[tuple[str, float]]],
     quantities: dict[int, float],

@@ -11,6 +11,8 @@ class PositionOut(BaseModel):
     cost_base: float | None
     pnl_base: float | None
     exclusion_reason: str | None
+    avg_cost_source: str
+    xirr: float | None
 
 
 class PortfolioSummaryOut(BaseModel):
@@ -20,3 +22,4 @@ class PortfolioSummaryOut(BaseModel):
     total_cost_base: float
     total_pnl_base: float
     currency_exposure: dict[str, float]
+    xirr: float | None

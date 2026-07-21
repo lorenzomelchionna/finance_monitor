@@ -1,6 +1,6 @@
 """Unit tests for the pure portfolio-value aggregation."""
 
-from app.domain.history import aggregate_portfolio_value
+from app.domain.history import actual_portfolio_value, aggregate_portfolio_value
 
 
 def test_simple_two_instrument_aggregate():
@@ -54,3 +54,42 @@ def test_instrument_without_quantity_excluded():
 def test_empty_inputs():
     assert aggregate_portfolio_value({}, {}) == []
     assert aggregate_portfolio_value({1: []}, {1: 1.0}) == []
+
+
+def test_actual_value_reconstructs_held_quantity_over_time():
+    # Price constant at 100. Buy 1 share on day 2, another on day 3.
+    series = {
+        1: [("2025-01-01", 100.0), ("2025-01-02", 100.0), ("2025-01-03", 100.0), ("2025-01-04", 100.0)],
+    }
+    deltas = {1: [("2025-01-02", 1.0), ("2025-01-03", 1.0)]}
+    result = actual_portfolio_value(series, deltas)
+
+    by_date = {p.date: p.value for p in result}
+    # Series starts at the first purchase (day 2), not day 1.
+    assert result[0].date == "2025-01-02"
+    assert by_date["2025-01-02"] == 100.0  # 1 share
+    assert by_date["2025-01-03"] == 200.0  # 2 shares
+    assert by_date["2025-01-04"] == 200.0  # still 2 shares
+
+
+def test_actual_value_price_moves_after_purchase():
+    series = {1: [("2025-01-01", 100.0), ("2025-01-02", 150.0)]}
+    deltas = {1: [("2025-01-01", 2.0)]}
+    result = actual_portfolio_value(series, deltas)
+    by_date = {p.date: p.value for p in result}
+    assert by_date["2025-01-01"] == 200.0
+    assert by_date["2025-01-02"] == 300.0  # 2 shares * 150
+
+
+def test_actual_value_empty_without_deltas():
+    assert actual_portfolio_value({1: [("2025-01-01", 100.0)]}, {}) == []
+
+
+def test_actual_value_start_date_independent_of_delta_order():
+    # Deltas passed out of chronological order — series must still start
+    # at the earliest purchase, not the first list element.
+    series = {1: [("2025-01-01", 100.0), ("2025-01-02", 100.0), ("2025-01-03", 100.0)]}
+    deltas = {1: [("2025-01-03", 1.0), ("2025-01-01", 1.0)]}
+    result = actual_portfolio_value(series, deltas)
+    assert result[0].date == "2025-01-01"
+    assert result[0].value == 100.0  # 1 share bought on day 1

@@ -428,6 +428,8 @@ export interface components {
             currency_exposure: {
                 [key: string]: number;
             };
+            /** Xirr */
+            xirr: number | null;
         };
         /** PortfolioValuePointOut */
         PortfolioValuePointOut: {
@@ -435,6 +437,8 @@ export interface components {
             date: string;
             /** Value */
             value: number;
+            /** Invested */
+            invested: number;
         };
         /** PositionOut */
         PositionOut: {
@@ -456,6 +460,10 @@ export interface components {
             pnl_base: number | null;
             /** Exclusion Reason */
             exclusion_reason: string | null;
+            /** Avg Cost Source */
+            avg_cost_source: string;
+            /** Xirr */
+            xirr: number | null;
         };
         /** PriceOut */
         PriceOut: {
