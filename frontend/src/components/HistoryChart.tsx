@@ -34,6 +34,52 @@ function formatDate(iso: string): string {
   return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getFullYear()).slice(2)}`;
 }
 
+const fmt = (v: number, unit?: string) =>
+  `${v.toLocaleString("it-IT", { maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ""}`;
+
+interface ChartTooltipProps {
+  active?: boolean;
+  label?: string | number;
+  payload?: { payload?: { marker?: BuyMarker; value?: number; invested?: number } }[];
+  unit?: string;
+}
+
+/** Custom tooltip: renders only the series that actually have a value at
+ * the hovered date. Without this the Scatter ("Acquisto") shows up on
+ * every point as "NaN" because its dataKey is undefined off-marker. */
+function ChartTooltip({ active, payload, label, unit }: ChartTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const row = payload[0]?.payload;
+  const lines: { key: string; color: string; text: string }[] = [];
+
+  if (row?.value != null && Number.isFinite(row.value)) {
+    lines.push({ key: "value", color: "#3bc9ff", text: `Valore: ${fmt(row.value, unit)}` });
+  }
+  if (row?.invested != null && Number.isFinite(row.invested)) {
+    lines.push({ key: "invested", color: "#9aa0aa", text: `Investito: ${fmt(row.invested, unit)}` });
+  }
+  if (row?.marker) {
+    lines.push({
+      key: "buy",
+      color: "#ff5c8a",
+      text: `Acquisto: ${row.marker.quantity} @ ${fmt(row.marker.price, unit)}`,
+    });
+  }
+  if (lines.length === 0) return null;
+
+  return (
+    <div className="chart-tooltip">
+      <div className="chart-tooltip-date">{new Date(String(label)).toLocaleDateString("it-IT")}</div>
+      {lines.map((l) => (
+        <div key={l.key} style={{ color: l.color }}>
+          {l.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Single-series daily line chart with optional buy markers. Markers are
  * merged into the same data array (keyed by date) and drawn as a Scatter
  * so they share the category X axis with the line.
@@ -75,22 +121,7 @@ export function HistoryChart({
           width={72}
           domain={["auto", "auto"]}
         />
-        <Tooltip
-          labelFormatter={(d) => new Date(String(d)).toLocaleDateString("it-IT")}
-          formatter={(value, name, entry) => {
-            if (name === "Acquisto") {
-              const m = entry?.payload?.marker as BuyMarker | undefined;
-              if (m) {
-                return [`${m.quantity} @ ${m.price.toLocaleString("it-IT")} ${unit ?? ""}`.trim(), "Acquisto"];
-              }
-            }
-            const label = name === "Investito" ? "Investito" : "Valore";
-            return [
-              `${Number(value).toLocaleString("it-IT", { maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ""}`,
-              label,
-            ];
-          }}
-        />
+        <Tooltip content={<ChartTooltip unit={unit} />} />
         <Legend />
         {investedPoints && investedPoints.length > 0 && (
           <Line
