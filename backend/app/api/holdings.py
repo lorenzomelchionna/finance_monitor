@@ -4,7 +4,7 @@ from sqlmodel import Session
 from app.db import get_session
 from app.models.instrument import Instrument
 from app.schemas.holding import HoldingCreate, HoldingOut, HoldingUpdate
-from app.schemas.instrument import InstrumentOut
+from app.schemas.instrument import InstrumentOut, InstrumentUpdate
 from app.services import holdings_service
 
 router = APIRouter(prefix="/api", tags=["holdings"])
@@ -24,6 +24,16 @@ def _to_holding_out(session: Session, holding) -> HoldingOut:
 @router.get("/instruments", response_model=list[InstrumentOut])
 def list_instruments(session: Session = Depends(get_session)) -> list[Instrument]:
     return holdings_service.list_instruments(session)
+
+
+@router.put("/instruments/{instrument_id}", response_model=InstrumentOut)
+def update_instrument(
+    instrument_id: int, payload: InstrumentUpdate, session: Session = Depends(get_session)
+) -> Instrument:
+    instrument = holdings_service.update_instrument(session, instrument_id, payload)
+    if instrument is None:
+        raise HTTPException(status_code=404, detail="Instrument not found")
+    return instrument
 
 
 @router.get("/holdings", response_model=list[HoldingOut])

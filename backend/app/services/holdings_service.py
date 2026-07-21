@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 from app.models.holding import Holding
 from app.models.instrument import Instrument
 from app.schemas.holding import HoldingCreate, HoldingUpdate, InstrumentInput
+from app.schemas.instrument import InstrumentUpdate
 
 
 def _resolve_instrument(session: Session, spec: InstrumentInput) -> Instrument:
@@ -49,6 +50,20 @@ def list_instruments(session: Session) -> list[Instrument]:
 
 def list_holdings(session: Session) -> list[Holding]:
     return session.exec(select(Holding)).all()
+
+
+def update_instrument(
+    session: Session, instrument_id: int, payload: InstrumentUpdate
+) -> Instrument | None:
+    instrument = session.get(Instrument, instrument_id)
+    if instrument is None:
+        return None
+    instrument.name = payload.name
+    instrument.updated_at = datetime.now(timezone.utc)
+    session.add(instrument)
+    session.commit()
+    session.refresh(instrument)
+    return instrument
 
 
 def create_holding(session: Session, payload: HoldingCreate) -> Holding:

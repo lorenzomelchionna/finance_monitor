@@ -4,6 +4,7 @@ import {
   useDeleteHolding,
   useHoldings,
   useUpdateHolding,
+  useUpdateInstrument,
 } from "../api/hooks";
 import { HoldingsTable } from "../components/HoldingsTable";
 import type { components } from "../api/schema";
@@ -29,6 +30,7 @@ export function HoldingsView() {
   const { data: holdings, isLoading, error } = useHoldings();
   const createHolding = useCreateHolding();
   const updateHolding = useUpdateHolding();
+  const updateInstrument = useUpdateInstrument();
   const deleteHolding = useDeleteHolding();
 
   const [form, setForm] = useState(emptyForm);
@@ -149,6 +151,7 @@ export function HoldingsView() {
           <HoldingsTable
             holdings={holdings}
             onUpdateQuantity={(id, quantity) => updateHolding.mutate({ id, body: { quantity } })}
+            onRenameInstrument={(instrumentId, name) => updateInstrument.mutate({ id: instrumentId, name })}
             onDelete={(id) => deleteHolding.mutate(id)}
           />
         )}

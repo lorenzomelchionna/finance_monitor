@@ -119,3 +119,33 @@ def test_update_and_delete_holding():
         assert resp.status_code == 404
     finally:
         app.dependency_overrides.clear()
+
+
+def test_rename_instrument():
+    client = _client_with_fresh_db()
+    try:
+        created = client.post(
+            "/api/holdings",
+            json={
+                "instrument": {"ticker": "VWCE", "name": "Old Name", "currency": "EUR"},
+                "quantity": 1,
+                "avg_cost_price": 100.0,
+                "cost_currency": "EUR",
+            },
+        ).json()
+        instrument_id = created["instrument"]["id"]
+
+        resp = client.put(f"/api/instruments/{instrument_id}", json={"name": "New Name"})
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "New Name"
+
+        resp = client.get("/api/holdings")
+        assert resp.json()[0]["instrument"]["name"] == "New Name"
+
+        resp = client.put(f"/api/instruments/{instrument_id}", json={"name": ""})
+        assert resp.status_code == 422
+
+        resp = client.put("/api/instruments/999999", json={"name": "Nope"})
+        assert resp.status_code == 404
+    finally:
+        app.dependency_overrides.clear()

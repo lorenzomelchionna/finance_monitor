@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/instruments/{instrument_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Instrument */
+        put: operations["update_instrument_api_instruments__instrument_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/holdings": {
         parameters: {
             query?: never;
@@ -231,6 +248,11 @@ export interface components {
             /** Auto Price Enabled */
             auto_price_enabled: boolean;
         };
+        /** InstrumentUpdate */
+        InstrumentUpdate: {
+            /** Name */
+            name: string;
+        };
         /** ManualPriceIn */
         ManualPriceIn: {
             /** Price */
@@ -392,6 +414,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstrumentOut"][];
+                };
+            };
+        };
+    };
+    update_instrument_api_instruments__instrument_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                instrument_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstrumentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

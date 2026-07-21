@@ -57,6 +57,24 @@ export function useUpdateHolding() {
   });
 }
 
+export function useUpdateInstrument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const { data, error } = await api.PUT("/api/instruments/{instrument_id}", {
+        params: { path: { instrument_id: id } },
+        body: { name },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
+      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
+    },
+  });
+}
+
 export function useDeleteHolding() {
   const queryClient = useQueryClient();
   return useMutation({
