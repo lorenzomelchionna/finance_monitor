@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
-import { usePortfolioHistory } from "../api/hooks";
+import { usePortfolioHistory, useTransactions } from "../api/hooks";
 import { HistoryChart } from "../components/HistoryChart";
+import { ImportTransactions } from "../components/ImportTransactions";
 import {
+  buildMarkers,
   HORIZONS,
   movingAverage,
   sliceByHorizon,
+  type BuyEvent,
   type Horizon,
   type TsPoint,
 } from "../lib/timeseries";
@@ -21,10 +24,12 @@ const SMOOTHING_OPTIONS = [
 
 export function HistoryView() {
   const { data, isLoading, error } = usePortfolioHistory();
+  const { data: transactions } = useTransactions();
 
   const [selection, setSelection] = useState<Selection>("portfolio");
   const [horizon, setHorizon] = useState<Horizon>("MAX");
   const [smoothing, setSmoothing] = useState<number>(1);
+  const [showBuys, setShowBuys] = useState<boolean>(true);
 
   const baseCurrency = data?.base_currency ?? "EUR";
 
@@ -42,6 +47,24 @@ export function HistoryView() {
   const points = useMemo(
     () => movingAverage(sliceByHorizon(rawPoints, horizon), smoothing),
     [rawPoints, horizon, smoothing],
+  );
+
+  // Buy events relevant to the current selection: all buys for the
+  // aggregate view, only this instrument's for a single-product view.
+  const buys: BuyEvent[] = useMemo(() => {
+    if (!transactions) return [];
+    const relevant =
+      selection === "portfolio"
+        ? transactions
+        : transactions.filter((t) => t.instrument_id === selection);
+    return relevant
+      .filter((t) => t.sign === "A")
+      .map((t) => ({ date: t.trade_date, quantity: t.quantity, price: t.price }));
+  }, [transactions, selection]);
+
+  const markers = useMemo(
+    () => (showBuys ? buildMarkers(points, buys) : []),
+    [showBuys, points, buys],
   );
 
   const selectedName =
@@ -102,16 +125,43 @@ export function HistoryView() {
               ))}
             </div>
           </div>
+
+          <div className="control-group">
+            <span className="control-label">Acquisti</span>
+            <div className="segmented">
+              <button
+                type="button"
+                className={showBuys ? "active" : ""}
+                onClick={() => setShowBuys(true)}
+              >
+                Mostra
+              </button>
+              <button
+                type="button"
+                className={!showBuys ? "active" : ""}
+                onClick={() => setShowBuys(false)}
+              >
+                Nascondi
+              </button>
+            </div>
+          </div>
         </div>
 
         <HistoryChart
           points={points}
+          markers={markers}
           unit={selection === "portfolio" ? baseCurrency : undefined}
         />
+        {showBuys && markers.length > 0 && (
+          <p className="placeholder">
+            🔴 {markers.length} punti di acquisto nell'orizzonte selezionato.
+          </p>
+        )}
       </section>
 
       <section className="panel">
         <h2>Vista</h2>
+        <ImportTransactions />
         <div className="history-selector">
           <button
             type="button"

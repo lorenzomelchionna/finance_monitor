@@ -276,3 +276,13 @@
   color: #b7791f;
   font-size: 13px;
 }
+
+.import-box {
+  margin-bottom: 14px;
+}
+
+.import-result {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-h);
+}

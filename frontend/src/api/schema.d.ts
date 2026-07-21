@@ -166,6 +166,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Transactions */
+        get: operations["list_transactions_api_transactions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transactions/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Transactions
+         * @description Import a Fineco 'Movimenti Dossier Titoli' xlsx. Only operations
+         *     for instruments already in the portfolio are stored; re-importing an
+         *     overlapping export is idempotent (dedup by natural key).
+         */
+        post: operations["import_transactions_api_transactions_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -192,6 +231,11 @@ export interface components {
          * @enum {string}
          */
         AssetClass: "etf" | "stock" | "bond" | "cash" | "other";
+        /** Body_import_transactions_api_transactions_import_post */
+        Body_import_transactions_api_transactions_import_post: {
+            /** File */
+            file: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -234,6 +278,15 @@ export interface components {
             avg_cost_price?: number | null;
             /** Cost Currency */
             cost_currency?: string | null;
+        };
+        /** ImportResultOut */
+        ImportResultOut: {
+            /** Imported */
+            imported: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Skipped */
+            skipped: components["schemas"]["SkippedInstrument"][];
         };
         /** InstrumentHistoryOut */
         InstrumentHistoryOut: {
@@ -439,6 +492,49 @@ export interface components {
             /** Currency */
             currency?: string | null;
         };
+        /** SkippedInstrument */
+        SkippedInstrument: {
+            /** Isin */
+            isin: string;
+            /** Name */
+            name: string;
+        };
+        /** TransactionOut */
+        TransactionOut: {
+            /** Id */
+            id: number;
+            /** Instrument Id */
+            instrument_id: number;
+            /** Isin */
+            isin: string;
+            /** Name */
+            name: string;
+            /**
+             * Trade Date
+             * Format: date
+             */
+            trade_date: string;
+            /** Value Date */
+            value_date: string | null;
+            sign: components["schemas"]["TransactionSign"];
+            /** Quantity */
+            quantity: number;
+            /** Currency */
+            currency: string;
+            /** Price */
+            price: number;
+            /** Fx Rate */
+            fx_rate: number;
+            /** Gross Amount */
+            gross_amount: number;
+            /** Commissions */
+            commissions: number;
+        };
+        /**
+         * TransactionSign
+         * @enum {string}
+         */
+        TransactionSign: "A" | "V";
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -779,6 +875,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MonteCarloResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_transactions_api_transactions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionOut"][];
+                };
+            };
+        };
+    };
+    import_transactions_api_transactions_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_transactions_api_transactions_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResultOut"];
                 };
             };
             /** @description Validation Error */

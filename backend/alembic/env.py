@@ -9,7 +9,7 @@ from alembic import context
 # Import models so their tables register on SQLModel.metadata before
 # autogenerate/create_all inspects it.
 from app.config import get_settings
-from app.models import instrument, holding, price, breakdown  # noqa: F401
+from app.models import instrument, holding, price, breakdown, transaction  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

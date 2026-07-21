@@ -11,10 +11,13 @@ export type MonteCarloRequest = components["schemas"]["MonteCarloRequest"];
 export type MonteCarloResponse = components["schemas"]["MonteCarloResponse"];
 export type PortfolioHistoryOut = components["schemas"]["PortfolioHistoryOut"];
 export type InstrumentHistoryOut = components["schemas"]["InstrumentHistoryOut"];
+export type TransactionOut = components["schemas"]["TransactionOut"];
+export type ImportResultOut = components["schemas"]["ImportResultOut"];
 
 const HOLDINGS_KEY = ["holdings"] as const;
 const PORTFOLIO_SUMMARY_KEY = ["portfolio", "summary"] as const;
 const PORTFOLIO_HISTORY_KEY = ["portfolio", "history"] as const;
+const TRANSACTIONS_KEY = ["transactions"] as const;
 
 export function useHoldings() {
   return useQuery({
@@ -117,6 +120,36 @@ export function usePortfolioHistory() {
     // rarely changes intraday — cache generously; horizon/smoothing are
     // client-side so they never re-hit this.
     staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useTransactions() {
+  return useQuery({
+    queryKey: TRANSACTIONS_KEY,
+    queryFn: async () => {
+      const { data, error } = await api.GET("/api/transactions");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useImportTransactions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const body = new FormData();
+      body.append("file", file);
+      const { data, error } = await api.POST("/api/transactions/import", {
+        body: body as unknown as { file: string },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY });
+      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
+    },
   });
 }
 
