@@ -1,12 +1,28 @@
 import { useState } from "react";
 import { usePortfolioSummary, useRefreshPrices, useSetManualPrice } from "../api/hooks";
 import { CurrencyExposurePie } from "../components/CurrencyExposurePie";
+import { InfoTip } from "../components/InfoTip";
 import { parseLocaleNumber } from "../lib/number";
 
 const STATUS_LABEL: Record<string, string> = {
   ok: "auto",
   manual: "manuale",
   missing: "mancante",
+};
+
+const TIP = {
+  value: "Valore di mercato attuale di tutte le posizioni, convertito nella valuta base ai prezzi correnti (o all'ultimo prezzo manuale).",
+  invested: "Capitale effettivamente versato: somma dei controvalori d'acquisto più le commissioni, dai movimenti Fineco importati (al netto delle vendite).",
+  pnl: "Profitto/perdita latente = Valore totale − Capitale investito. Non realizzato finché non vendi.",
+  ret: "Rendimento semplice = P/L in percentuale sul capitale investito. NON annualizzato: è il guadagno totale sul periodo, qualunque sia la sua durata.",
+  xirr: "Rendimento annualizzato money-weighted (XIRR): tiene conto di quanto tempo ogni versamento è rimasto investito. Su finestre brevi (<1 anno) tende a sovrastimare, perché annualizza un periodo corto.",
+  quantity: "Numero di quote/azioni detenute.",
+  currency: "Valuta in cui lo strumento è quotato.",
+  price: "Fonte dell'ultimo prezzo: auto (da yfinance), manuale (inserito a mano) o mancante.",
+  cost: "Capitale investito nella posizione. ✓ = derivato dai movimenti Fineco (esatto, commissioni incluse); altrimenti prezzo di carico inserito a mano.",
+  posValue: "Valore di mercato attuale della posizione (quantità × prezzo corrente), in valuta base.",
+  posPnl: "Profitto/perdita latente della posizione = Valore − Costo.",
+  posXirr: "Rendimento annualizzato (XIRR) della singola posizione, dai suoi acquisti e dal valore attuale.",
 };
 
 export function DashboardView() {
@@ -20,6 +36,8 @@ export function DashboardView() {
   if (error || !summary) return <p className="error-banner">Errore nel caricamento del riepilogo.</p>;
 
   const pnlClass = summary.total_pnl_base >= 0 ? "pnl-positive" : "pnl-negative";
+  const simpleReturn =
+    summary.total_cost_base > 0 ? summary.total_pnl_base / summary.total_cost_base : null;
 
   return (
     <div>
@@ -33,19 +51,39 @@ export function DashboardView() {
 
         <div className="summary-cards">
           <div className="summary-card">
-            <span className="summary-label">Valore totale</span>
+            <span className="summary-label">
+              Valore totale <InfoTip text={TIP.value} />
+            </span>
             <span className="summary-value">{summary.total_value_base.toFixed(2)}</span>
           </div>
           <div className="summary-card">
-            <span className="summary-label">Capitale investito</span>
+            <span className="summary-label">
+              Capitale investito <InfoTip text={TIP.invested} />
+            </span>
             <span className="summary-value">{summary.total_cost_base.toFixed(2)}</span>
           </div>
           <div className="summary-card">
-            <span className="summary-label">P/L</span>
+            <span className="summary-label">
+              P/L <InfoTip text={TIP.pnl} />
+            </span>
             <span className={`summary-value ${pnlClass}`}>{summary.total_pnl_base.toFixed(2)}</span>
           </div>
           <div className="summary-card">
-            <span className="summary-label">Rendimento (XIRR)</span>
+            <span className="summary-label">
+              Rendimento <InfoTip text={TIP.ret} />
+            </span>
+            <span
+              className={`summary-value ${
+                simpleReturn != null ? (simpleReturn >= 0 ? "pnl-positive" : "pnl-negative") : ""
+              }`}
+            >
+              {simpleReturn != null ? `${(simpleReturn * 100).toFixed(1)}%` : "—"}
+            </span>
+          </div>
+          <div className="summary-card">
+            <span className="summary-label">
+              Rend. annualizzato (XIRR) <InfoTip text={TIP.xirr} />
+            </span>
             <span
               className={`summary-value ${
                 summary.xirr != null ? (summary.xirr >= 0 ? "pnl-positive" : "pnl-negative") : ""
@@ -68,13 +106,13 @@ export function DashboardView() {
           <thead>
             <tr>
               <th>Strumento</th>
-              <th>Quantità</th>
-              <th>Valuta</th>
-              <th>Prezzo</th>
-              <th>Costo</th>
-              <th>Valore</th>
-              <th>P/L</th>
-              <th>XIRR</th>
+              <th>Quantità <InfoTip text={TIP.quantity} /></th>
+              <th>Valuta <InfoTip text={TIP.currency} /></th>
+              <th>Prezzo <InfoTip text={TIP.price} /></th>
+              <th>Costo <InfoTip text={TIP.cost} /></th>
+              <th>Valore <InfoTip text={TIP.posValue} /></th>
+              <th>P/L <InfoTip text={TIP.posPnl} /></th>
+              <th>XIRR <InfoTip text={TIP.posXirr} /></th>
               <th></th>
             </tr>
           </thead>
