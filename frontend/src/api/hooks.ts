@@ -60,10 +60,10 @@ export function useUpdateHolding() {
 export function useUpdateInstrument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+    mutationFn: async ({ id, name, ticker }: { id: number; name: string; ticker?: string }) => {
       const { data, error } = await api.PUT("/api/instruments/{instrument_id}", {
         params: { path: { instrument_id: id } },
-        body: { name },
+        body: { name, ticker },
       });
       if (error) throw error;
       return data;

@@ -30,7 +30,10 @@ def list_instruments(session: Session = Depends(get_session)) -> list[Instrument
 def update_instrument(
     instrument_id: int, payload: InstrumentUpdate, session: Session = Depends(get_session)
 ) -> Instrument:
-    instrument = holdings_service.update_instrument(session, instrument_id, payload)
+    try:
+        instrument = holdings_service.update_instrument(session, instrument_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if instrument is None:
         raise HTTPException(status_code=404, detail="Instrument not found")
     return instrument

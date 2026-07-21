@@ -5,6 +5,7 @@ from app.models.instrument import AssetClass
 
 class InstrumentUpdate(BaseModel):
     name: str = Field(min_length=1)
+    ticker: str | None = None
 
 
 class InstrumentOut(BaseModel):

@@ -5,14 +5,15 @@ import { parseLocaleNumber } from "../lib/number";
 interface Props {
   holdings: HoldingOut[];
   onUpdateQuantity: (id: number, quantity: number) => void;
-  onRenameInstrument: (instrumentId: number, name: string) => void;
+  onUpdateInstrument: (instrumentId: number, updates: { name: string; ticker?: string }) => void;
   onDelete: (id: number) => void;
 }
 
-/** Reusable holdings table: inline quantity/name edit + delete. Extracted
- * from HoldingsView so it can be reused (e.g. a read-only variant on
- * the future dashboard) without dragging the add-form/mutations along. */
-export function HoldingsTable({ holdings, onUpdateQuantity, onRenameInstrument, onDelete }: Props) {
+/** Reusable holdings table: inline quantity/name/ticker edit + delete.
+ * Extracted from HoldingsView so it can be reused (e.g. a read-only
+ * variant on the future dashboard) without dragging the add-form/
+ * mutations along. */
+export function HoldingsTable({ holdings, onUpdateQuantity, onUpdateInstrument, onDelete }: Props) {
   if (holdings.length === 0) {
     return <p className="placeholder">Nessuna posizione ancora. Aggiungine una qui sopra.</p>;
   }
@@ -36,7 +37,7 @@ export function HoldingsTable({ holdings, onUpdateQuantity, onRenameInstrument, 
             key={holding.id}
             holding={holding}
             onUpdateQuantity={onUpdateQuantity}
-            onRenameInstrument={onRenameInstrument}
+            onUpdateInstrument={onUpdateInstrument}
             onDelete={onDelete}
           />
         ))}
@@ -48,16 +49,17 @@ export function HoldingsTable({ holdings, onUpdateQuantity, onRenameInstrument, 
 function HoldingRow({
   holding,
   onUpdateQuantity,
-  onRenameInstrument,
+  onUpdateInstrument,
   onDelete,
 }: {
   holding: HoldingOut;
   onUpdateQuantity: (id: number, quantity: number) => void;
-  onRenameInstrument: (instrumentId: number, name: string) => void;
+  onUpdateInstrument: (instrumentId: number, updates: { name: string; ticker?: string }) => void;
   onDelete: (id: number) => void;
 }) {
   const [quantity, setQuantity] = useState(String(holding.quantity));
   const [name, setName] = useState(holding.instrument.name);
+  const [ticker, setTicker] = useState(holding.instrument.ticker ?? "");
 
   return (
     <tr>
@@ -74,13 +76,27 @@ function HoldingRow({
               return;
             }
             if (trimmed !== holding.instrument.name) {
-              onRenameInstrument(holding.instrument.id, trimmed);
+              onUpdateInstrument(holding.instrument.id, { name: trimmed });
             }
           }}
         />
       </td>
       <td>{holding.instrument.isin ?? "—"}</td>
-      <td>{holding.instrument.ticker ?? "—"}</td>
+      <td>
+        <input
+          type="text"
+          className="instrument-ticker-input"
+          placeholder="es. VWCE.MI"
+          value={ticker}
+          onChange={(e) => setTicker(e.target.value)}
+          onBlur={() => {
+            const trimmed = ticker.trim();
+            if (trimmed !== (holding.instrument.ticker ?? "")) {
+              onUpdateInstrument(holding.instrument.id, { name: holding.instrument.name, ticker: trimmed });
+            }
+          }}
+        />
+      </td>
       <td>
         <input
           type="text"

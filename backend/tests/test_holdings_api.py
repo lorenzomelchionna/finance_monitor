@@ -149,3 +149,43 @@ def test_rename_instrument():
         assert resp.status_code == 404
     finally:
         app.dependency_overrides.clear()
+
+
+def test_update_instrument_ticker():
+    client = _client_with_fresh_db()
+    try:
+        created = client.post(
+            "/api/holdings",
+            json={
+                "instrument": {"ticker": "MEUD", "name": "Amundi MSCI Europe", "currency": "EUR"},
+                "quantity": 1,
+                "avg_cost_price": 100.0,
+                "cost_currency": "EUR",
+            },
+        ).json()
+        other = client.post(
+            "/api/holdings",
+            json={
+                "instrument": {"ticker": "EIMI", "name": "iShares EM", "currency": "EUR"},
+                "quantity": 1,
+                "avg_cost_price": 50.0,
+                "cost_currency": "EUR",
+            },
+        ).json()
+        instrument_id = created["instrument"]["id"]
+
+        resp = client.put(
+            f"/api/instruments/{instrument_id}",
+            json={"name": "Amundi MSCI Europe", "ticker": "MEUD.MI"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ticker"] == "MEUD.MI"
+
+        # Colliding with another instrument's ticker is rejected, not silently swapped.
+        resp = client.put(
+            f"/api/instruments/{instrument_id}",
+            json={"name": "Amundi MSCI Europe", "ticker": other["instrument"]["ticker"]},
+        )
+        assert resp.status_code == 400
+    finally:
+        app.dependency_overrides.clear()

@@ -252,6 +252,8 @@ export interface components {
         InstrumentUpdate: {
             /** Name */
             name: string;
+            /** Ticker */
+            ticker?: string | null;
         };
         /** ManualPriceIn */
         ManualPriceIn: {

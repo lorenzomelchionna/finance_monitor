@@ -7,6 +7,7 @@ instead of duplicating it — then manages the Holding row itself.
 
 from datetime import datetime, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.models.holding import Holding
@@ -59,9 +60,15 @@ def update_instrument(
     if instrument is None:
         return None
     instrument.name = payload.name
+    if payload.ticker is not None:
+        instrument.ticker = payload.ticker or None
     instrument.updated_at = datetime.now(timezone.utc)
     session.add(instrument)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise ValueError(f"Ticker '{payload.ticker}' is already used by another instrument") from exc
     session.refresh(instrument)
     return instrument
 

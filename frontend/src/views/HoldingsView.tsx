@@ -151,7 +151,9 @@ export function HoldingsView() {
           <HoldingsTable
             holdings={holdings}
             onUpdateQuantity={(id, quantity) => updateHolding.mutate({ id, body: { quantity } })}
-            onRenameInstrument={(instrumentId, name) => updateInstrument.mutate({ id: instrumentId, name })}
+            onUpdateInstrument={(instrumentId, updates) =>
+              updateInstrument.mutate({ id: instrumentId, ...updates })
+            }
             onDelete={(id) => deleteHolding.mutate(id)}
           />
         )}
