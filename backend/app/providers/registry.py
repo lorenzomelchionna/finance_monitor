@@ -11,7 +11,14 @@ import enum
 from sqlmodel import Session
 
 from app.models.instrument import Instrument
-from app.providers.base import FxProvider, InstrumentRef, PriceProvider, PriceQuote
+from app.providers.base import (
+    FxProvider,
+    HistoryPoint,
+    HistoryProvider,
+    InstrumentRef,
+    PriceProvider,
+    PriceQuote,
+)
 from app.providers.manual_provider import ManualPriceProvider
 from app.providers.yfinance_provider import YFinanceProvider
 
@@ -33,6 +40,12 @@ _AUTO_PROVIDERS: dict[str, PriceProvider] = {
 # it) — an unavailable rate just means the position is excluded from
 # EUR totals (see domain/portfolio.py's "missing_fx" status).
 _FX_PROVIDERS: dict[str, FxProvider] = {
+    "yfinance": _yfinance,
+}
+
+# History has no manual fallback (no data model for user-entered
+# series) — a source that can't return history just yields None.
+_HISTORY_PROVIDERS: dict[str, HistoryProvider] = {
     "yfinance": _yfinance,
 }
 
@@ -63,6 +76,17 @@ def resolve_price(
         return manual_quote, PriceStatus.manual
 
     return None, PriceStatus.missing
+
+
+def resolve_history(
+    instrument: Instrument, provider_name: str
+) -> list[HistoryPoint] | None:
+    if not instrument.auto_price_enabled:
+        return None
+    provider = _HISTORY_PROVIDERS.get(provider_name)
+    if provider is None:
+        return None
+    return provider.get_history(to_instrument_ref(instrument))
 
 
 def resolve_fx_rate(source_currency: str, target_currency: str, provider_name: str) -> float | None:

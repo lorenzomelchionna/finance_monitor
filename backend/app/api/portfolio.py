@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from app.db import get_session
+from app.schemas.history import PortfolioHistoryOut
 from app.schemas.portfolio import PortfolioSummaryOut
+from app.services.history_service import get_portfolio_history
 from app.services.portfolio_service import get_portfolio_summary
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
@@ -21,3 +23,12 @@ def portfolio_summary(session: Session = Depends(get_session)) -> PortfolioSumma
         total_pnl_base=summary.total_pnl_base,
         currency_exposure=summary.currency_exposure,
     )
+
+
+@router.get("/history", response_model=PortfolioHistoryOut)
+def portfolio_history(session: Session = Depends(get_session)) -> PortfolioHistoryOut:
+    """Full available daily history per held instrument + the aggregate
+    portfolio value series. Fetched from the price provider on each call
+    (yfinance period=max); the frontend caches it and does horizon
+    slicing / smoothing client-side, so switching views hits no network."""
+    return PortfolioHistoryOut.model_validate(get_portfolio_history(session))

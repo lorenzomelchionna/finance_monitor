@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 import yfinance as yf
 
-from app.providers.base import FxRate, InstrumentRef, PriceQuote
+from app.providers.base import FxRate, HistoryPoint, InstrumentRef, PriceQuote
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,30 @@ class YFinanceProvider:
         if price is None:
             return None
         return PriceQuote(price=float(price), currency=currency, as_of=datetime.now(timezone.utc))
+
+    def get_history(self, ref: InstrumentRef) -> list[HistoryPoint] | None:
+        if not ref.ticker:
+            return None
+        try:
+            # period="max" = oldest available; auto_adjust folds in
+            # splits/dividends so the series is comparable over time.
+            frame = yf.Ticker(ref.ticker).history(period="max", interval="1d", auto_adjust=True)
+        except Exception:
+            logger.warning("yfinance history lookup failed for %s", ref.ticker, exc_info=True)
+            return None
+
+        if frame is None or frame.empty or "Close" not in frame.columns:
+            return []
+
+        points: list[HistoryPoint] = []
+        for ts, close in frame["Close"].items():
+            if close is None:
+                continue
+            close_f = float(close)
+            if close_f != close_f:  # NaN guard
+                continue
+            points.append(HistoryPoint(date=ts.date().isoformat(), close=close_f))
+        return points
 
     def get_rate(self, base: str, quote: str) -> FxRate | None:
         if base == quote:

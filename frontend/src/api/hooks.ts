@@ -9,9 +9,12 @@ export type PortfolioSummaryOut = components["schemas"]["PortfolioSummaryOut"];
 export type PriceStatusOut = components["schemas"]["PriceStatusOut"];
 export type MonteCarloRequest = components["schemas"]["MonteCarloRequest"];
 export type MonteCarloResponse = components["schemas"]["MonteCarloResponse"];
+export type PortfolioHistoryOut = components["schemas"]["PortfolioHistoryOut"];
+export type InstrumentHistoryOut = components["schemas"]["InstrumentHistoryOut"];
 
 const HOLDINGS_KEY = ["holdings"] as const;
 const PORTFOLIO_SUMMARY_KEY = ["portfolio", "summary"] as const;
+const PORTFOLIO_HISTORY_KEY = ["portfolio", "history"] as const;
 
 export function useHoldings() {
   return useQuery({
@@ -99,6 +102,21 @@ export function usePortfolioSummary() {
       if (error) throw error;
       return data;
     },
+  });
+}
+
+export function usePortfolioHistory() {
+  return useQuery({
+    queryKey: PORTFOLIO_HISTORY_KEY,
+    queryFn: async () => {
+      const { data, error } = await api.GET("/api/portfolio/history");
+      if (error) throw error;
+      return data;
+    },
+    // Full max-history is expensive to fetch (yfinance, ~1s/ticker) and
+    // rarely changes intraday — cache generously; horizon/smoothing are
+    // client-side so they never re-hit this.
+    staleTime: 1000 * 60 * 30,
   });
 }
 

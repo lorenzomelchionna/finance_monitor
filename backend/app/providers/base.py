@@ -37,6 +37,12 @@ class PriceQuote:
 
 
 @dataclass(frozen=True)
+class HistoryPoint:
+    date: str  # ISO date (YYYY-MM-DD)
+    close: float
+
+
+@dataclass(frozen=True)
 class FxRate:
     base: str
     quote: str
@@ -52,6 +58,16 @@ class BreakdownWeight:
 
 class PriceProvider(Protocol):
     def get_price(self, ref: InstrumentRef) -> PriceQuote | None: ...
+
+
+class HistoryProvider(Protocol):
+    """Full available daily close history for an instrument. Separate
+    from PriceProvider so a source can offer spot quotes without history
+    (or vice versa). Returns None on lookup failure, [] when the symbol
+    resolved but has no data — callers distinguish 'couldn't fetch' from
+    'genuinely empty'."""
+
+    def get_history(self, ref: InstrumentRef) -> list[HistoryPoint] | None: ...
 
 
 class FxProvider(Protocol):

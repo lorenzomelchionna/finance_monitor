@@ -91,6 +91,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/portfolio/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Portfolio History
+         * @description Full available daily history per held instrument + the aggregate
+         *     portfolio value series. Fetched from the price provider on each call
+         *     (yfinance period=max); the frontend caches it and does horizon
+         *     slicing / smoothing client-side, so switching views hits no network.
+         */
+        get: operations["portfolio_history_api_portfolio_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/prices/refresh": {
         parameters: {
             query?: never;
@@ -174,6 +197,13 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HistoryPointOut */
+        HistoryPointOut: {
+            /** Date */
+            date: string;
+            /** Close */
+            close: number;
+        };
         /** HoldingCreate */
         HoldingCreate: {
             instrument: components["schemas"]["InstrumentInput"];
@@ -204,6 +234,19 @@ export interface components {
             avg_cost_price?: number | null;
             /** Cost Currency */
             cost_currency?: string | null;
+        };
+        /** InstrumentHistoryOut */
+        InstrumentHistoryOut: {
+            /** Instrument Id */
+            instrument_id: number;
+            /** Name */
+            name: string;
+            /** Ticker */
+            ticker: string | null;
+            /** Currency */
+            currency: string;
+            /** Points */
+            points: components["schemas"]["HistoryPointOut"][];
         };
         /**
          * InstrumentInput
@@ -305,6 +348,17 @@ export interface components {
             /** Final P95 */
             final_p95: number;
         };
+        /** PortfolioHistoryOut */
+        PortfolioHistoryOut: {
+            /** Base Currency */
+            base_currency: string;
+            /** Series */
+            series: components["schemas"]["InstrumentHistoryOut"][];
+            /** Portfolio */
+            portfolio: components["schemas"]["PortfolioValuePointOut"][];
+            /** Warnings */
+            warnings: string[];
+        };
         /** PortfolioSummaryOut */
         PortfolioSummaryOut: {
             /** Base Currency */
@@ -321,6 +375,13 @@ export interface components {
             currency_exposure: {
                 [key: string]: number;
             };
+        };
+        /** PortfolioValuePointOut */
+        PortfolioValuePointOut: {
+            /** Date */
+            date: string;
+            /** Value */
+            value: number;
         };
         /** PositionOut */
         PositionOut: {
@@ -588,6 +649,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortfolioSummaryOut"];
+                };
+            };
+        };
+    };
+    portfolio_history_api_portfolio_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioHistoryOut"];
                 };
             };
         };
