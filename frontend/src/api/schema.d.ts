@@ -292,6 +292,8 @@ export interface components {
             missing: {
                 [key: string]: string[];
             };
+            /** Instruments */
+            instruments: components["schemas"]["InstrumentCompositionOut"][];
         };
         /** CompositionRefreshOut */
         CompositionRefreshOut: {
@@ -351,6 +353,19 @@ export interface components {
             duplicates: number;
             /** Skipped */
             skipped: components["schemas"]["SkippedInstrument"][];
+        };
+        /** InstrumentCompositionOut */
+        InstrumentCompositionOut: {
+            /** Instrument Id */
+            instrument_id: number;
+            /** Name */
+            name: string;
+            /** Ticker */
+            ticker: string | null;
+            /** Dimensions */
+            dimensions: {
+                [key: string]: components["schemas"]["WeightSliceOut"][];
+            };
         };
         /** InstrumentHistoryOut */
         InstrumentHistoryOut: {

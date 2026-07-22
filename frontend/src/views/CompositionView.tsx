@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useComposition, useRefreshComposition } from "../api/hooks";
 import { BreakdownBar } from "../components/BreakdownBar";
 
@@ -6,28 +7,62 @@ const DIM_LABEL: Record<string, string> = {
   sector: "Esposizione settoriale",
 };
 
+// "portfolio" = aggregate; a number = a single instrument_id.
+type Selection = "portfolio" | number;
+
 export function CompositionView() {
   const { data, isLoading, error } = useComposition();
   const refresh = useRefreshComposition();
+  const [selection, setSelection] = useState<Selection>("portfolio");
+
+  const selected = useMemo(() => {
+    if (!data || selection === "portfolio") return null;
+    return data.instruments.find((i) => i.instrument_id === selection) ?? null;
+  }, [data, selection]);
+
+  const selectedName = selected ? selected.name : "Portafoglio";
 
   return (
     <div>
       <section className="panel">
         <div className="dashboard-header">
-          <h2>Composizione (look-through)</h2>
+          <h2>Composizione (look-through) — {selectedName}</h2>
           <button type="button" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
             {refresh.isPending ? "Aggiorno…" : "Aggiorna composizione"}
           </button>
         </div>
         <p className="placeholder">
-          Pesi geografici e settoriali aggregati sul portafoglio, ricavati per ISIN da JustETF e
-          pesati sul valore di mercato di ogni posizione. Fonte pubblica non ufficiale: verifica i
-          valori sui factsheet se ti servono precisi.
+          Pesi geografici e settoriali ricavati per ISIN da JustETF (lista completa, non solo top-4).
+          L'aggregato di portafoglio è pesato sul valore di mercato di ogni posizione. Fonte pubblica
+          non ufficiale: verifica sui factsheet se ti servono precisi.
         </p>
         {refresh.data && refresh.data.failed.length > 0 && (
           <p className="error-banner">
             Fetch fallito per: {refresh.data.failed.join(", ")}. Riprova o inserisci a mano.
           </p>
+        )}
+
+        {data && (
+          <div className="history-selector">
+            <button
+              type="button"
+              className={selection === "portfolio" ? "chip active" : "chip"}
+              onClick={() => setSelection("portfolio")}
+            >
+              📊 Portafoglio (aggregato)
+            </button>
+            {data.instruments.map((i) => (
+              <button
+                key={i.instrument_id}
+                type="button"
+                className={selection === i.instrument_id ? "chip active" : "chip"}
+                onClick={() => setSelection(i.instrument_id)}
+              >
+                {i.name}
+                {i.ticker ? ` (${i.ticker})` : ""}
+              </button>
+            ))}
+          </div>
         )}
       </section>
 
@@ -36,27 +71,38 @@ export function CompositionView() {
 
       {data &&
         (["geography", "sector"] as const).map((dim) => {
-          const slices = data.dimensions[dim] ?? [];
+          const slices = selected
+            ? selected.dimensions[dim] ?? []
+            : data.dimensions[dim] ?? [];
+          const isPortfolio = selection === "portfolio";
           const coverage = data.coverage[dim] ?? 0;
           const missing = data.missing[dim] ?? [];
           return (
             <section className="panel" key={dim}>
               <div className="dashboard-header">
                 <h2>{DIM_LABEL[dim]}</h2>
-                <span className="placeholder">copertura {(coverage * 100).toFixed(0)}%</span>
+                {isPortfolio && (
+                  <span className="placeholder">copertura {(coverage * 100).toFixed(0)}%</span>
+                )}
               </div>
-              <BreakdownBar slices={slices.map((s) => ({ key: s.key, weight: s.weight }))} />
-              {missing.length > 0 && (
+              {slices.length === 0 ? (
                 <p className="placeholder">
-                  Senza dati {dim === "geography" ? "geografici" : "settoriali"}: {missing.join(", ")}
+                  Nessun dato {dim === "geography" ? "geografico" : "settoriale"}
                   {dim === "sector" ? " (es. ETF obbligazionari non hanno settori azionari)." : "."}
+                </p>
+              ) : (
+                <BreakdownBar slices={slices.map((s) => ({ key: s.key, weight: s.weight }))} />
+              )}
+              {isPortfolio && missing.length > 0 && (
+                <p className="placeholder">
+                  Escluso da questa dimensione: {missing.join(", ")}.
                 </p>
               )}
             </section>
           );
         })}
 
-      {data && Object.keys(data.dimensions).length === 0 && (
+      {data && data.instruments.length === 0 && (
         <section className="panel">
           <p className="placeholder">
             Nessun dato di composizione. Premi "Aggiorna composizione" per scaricarlo da JustETF.

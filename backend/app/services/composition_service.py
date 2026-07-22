@@ -113,6 +113,29 @@ def get_composition(session: Session) -> dict:
             if iid in values and dim not in weights_by_instrument.get(iid, {})
         ]
 
+    # Per-instrument breakdowns (for the single-ETF view). Weights sorted
+    # desc within each dimension.
+    instruments_out = []
+    for iid, instrument in instruments.items():
+        dims = weights_by_instrument.get(iid)
+        if not dims:
+            continue
+        instruments_out.append(
+            {
+                "instrument_id": iid,
+                "name": instrument.name,
+                "ticker": instrument.ticker,
+                "dimensions": {
+                    dim: [
+                        {"key": k, "weight": w}
+                        for k, w in sorted(pairs, key=lambda kv: kv[1], reverse=True)
+                    ]
+                    for dim, pairs in dims.items()
+                },
+            }
+        )
+    instruments_out.sort(key=lambda x: values.get(x["instrument_id"], 0.0), reverse=True)
+
     return {
         "dimensions": {
             dim: [{"key": s.key, "weight": s.weight} for s in slices]
@@ -120,4 +143,5 @@ def get_composition(session: Session) -> dict:
         },
         "coverage": coverage,
         "missing": missing,
+        "instruments": instruments_out,
     }
