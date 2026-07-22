@@ -22,6 +22,7 @@ const TIP = {
   cost: "Capitale investito nella posizione. ✓ = derivato dai movimenti Fineco (esatto, commissioni incluse); altrimenti prezzo di carico inserito a mano.",
   posValue: "Valore di mercato attuale della posizione (quantità × prezzo corrente), in valuta base.",
   posPnl: "Profitto/perdita latente della posizione = Valore − Costo.",
+  posRet: "Rendimento semplice della posizione = P/L in percentuale sul suo costo. NON annualizzato.",
   posXirr: "Rendimento annualizzato (XIRR) della singola posizione, dai suoi acquisti e dal valore attuale.",
 };
 
@@ -112,6 +113,7 @@ export function DashboardView() {
               <th>Costo <InfoTip text={TIP.cost} /></th>
               <th>Valore <InfoTip text={TIP.posValue} /></th>
               <th>P/L <InfoTip text={TIP.posPnl} /></th>
+              <th>Rendimento <InfoTip text={TIP.posRet} /></th>
               <th>XIRR <InfoTip text={TIP.posXirr} /></th>
               <th></th>
             </tr>
@@ -136,6 +138,19 @@ export function DashboardView() {
                   <td>{p.value_base !== null ? p.value_base.toFixed(2) : "—"}</td>
                   <td className={p.pnl_base !== null && p.pnl_base < 0 ? "pnl-negative" : "pnl-positive"}>
                     {p.pnl_base !== null ? p.pnl_base.toFixed(2) : "—"}
+                  </td>
+                  <td
+                    className={
+                      p.pnl_base != null && p.cost_base != null && p.cost_base > 0
+                        ? p.pnl_base >= 0
+                          ? "pnl-positive"
+                          : "pnl-negative"
+                        : ""
+                    }
+                  >
+                    {p.pnl_base != null && p.cost_base != null && p.cost_base > 0
+                      ? `${((p.pnl_base / p.cost_base) * 100).toFixed(1)}%`
+                      : "—"}
                   </td>
                   <td className={p.xirr != null ? (p.xirr >= 0 ? "pnl-positive" : "pnl-negative") : ""}>
                     {p.xirr != null ? `${(p.xirr * 100).toFixed(1)}%` : "—"}
