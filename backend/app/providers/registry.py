@@ -12,6 +12,8 @@ from sqlmodel import Session
 
 from app.models.instrument import Instrument
 from app.providers.base import (
+    BreakdownWeight,
+    CompositionProvider,
     FxProvider,
     HistoryPoint,
     HistoryProvider,
@@ -19,6 +21,7 @@ from app.providers.base import (
     PriceProvider,
     PriceQuote,
 )
+from app.providers.justetf_provider import JustEtfCompositionProvider
 from app.providers.manual_provider import ManualPriceProvider
 from app.providers.yfinance_provider import YFinanceProvider
 
@@ -47,6 +50,13 @@ _FX_PROVIDERS: dict[str, FxProvider] = {
 # series) — a source that can't return history just yields None.
 _HISTORY_PROVIDERS: dict[str, HistoryProvider] = {
     "yfinance": _yfinance,
+}
+
+# Composition look-through: scraped from JustETF per ISIN. Manual entry
+# (CompositionBreakdown rows with source="manual") is the fallback when
+# a fetch fails or the source lacks a dimension.
+_COMPOSITION_PROVIDERS: dict[str, CompositionProvider] = {
+    "justetf": JustEtfCompositionProvider(),
 }
 
 
@@ -87,6 +97,15 @@ def resolve_history(
     if provider is None:
         return None
     return provider.get_history(to_instrument_ref(instrument))
+
+
+def resolve_composition(
+    instrument: Instrument, provider_name: str
+) -> dict[str, list[BreakdownWeight]] | None:
+    provider = _COMPOSITION_PROVIDERS.get(provider_name)
+    if provider is None:
+        return None
+    return provider.get_breakdowns(to_instrument_ref(instrument))
 
 
 def resolve_fx_rate(source_currency: str, target_currency: str, provider_name: str) -> float | None:

@@ -13,11 +13,14 @@ export type PortfolioHistoryOut = components["schemas"]["PortfolioHistoryOut"];
 export type InstrumentHistoryOut = components["schemas"]["InstrumentHistoryOut"];
 export type TransactionOut = components["schemas"]["TransactionOut"];
 export type ImportResultOut = components["schemas"]["ImportResultOut"];
+export type CompositionOut = components["schemas"]["CompositionOut"];
+export type CompositionRefreshOut = components["schemas"]["CompositionRefreshOut"];
 
 const HOLDINGS_KEY = ["holdings"] as const;
 const PORTFOLIO_SUMMARY_KEY = ["portfolio", "summary"] as const;
 const PORTFOLIO_HISTORY_KEY = ["portfolio", "history"] as const;
 const TRANSACTIONS_KEY = ["transactions"] as const;
+const COMPOSITION_KEY = ["composition"] as const;
 
 export function useHoldings() {
   return useQuery({
@@ -120,6 +123,29 @@ export function usePortfolioHistory() {
     // rarely changes intraday — cache generously; horizon/smoothing are
     // client-side so they never re-hit this.
     staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useComposition() {
+  return useQuery({
+    queryKey: COMPOSITION_KEY,
+    queryFn: async () => {
+      const { data, error } = await api.GET("/api/composition");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useRefreshComposition() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await api.POST("/api/composition/refresh");
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: COMPOSITION_KEY }),
   });
 }
 

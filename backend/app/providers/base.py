@@ -75,8 +75,10 @@ class FxProvider(Protocol):
 
 
 class CompositionProvider(Protocol):
-    """v1: interface only. No implementation is wired up yet — see the
-    plan's Roadmap for the CSV-import / paid-API options under
-    consideration."""
+    """Look-through geo/sector weights for an instrument. Returns a map
+    keyed by dimension ("geography" / "sector") — a single source page
+    usually carries both, so one fetch yields both dimensions. Returns
+    None on lookup failure; a dimension absent from the map means that
+    source has no data for it (e.g. a bond ETF with no equity sectors)."""
 
-    def get_breakdown(self, ref: InstrumentRef, dimension: Dimension) -> list[BreakdownWeight] | None: ...
+    def get_breakdowns(self, ref: InstrumentRef) -> dict[str, list[BreakdownWeight]] | None: ...

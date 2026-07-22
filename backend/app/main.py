@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import holdings, portfolio, prices, simulation, transactions
+from app.api import composition, holdings, portfolio, prices, simulation, transactions
 from app.config import get_settings
 
 settings = get_settings()
@@ -21,6 +21,7 @@ app.include_router(portfolio.router)
 app.include_router(prices.router)
 app.include_router(simulation.router)
 app.include_router(transactions.router)
+app.include_router(composition.router)
 
 
 @app.get("/health")

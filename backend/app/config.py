@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     base_currency: str = "EUR"
     database_url: str = f"sqlite:///{DATA_DIR / 'finance_monitor.db'}"
     default_price_provider: str = "yfinance"
+    default_composition_provider: str = "justetf"
     # Both hostnames are covered since browsers treat localhost and
     # 127.0.0.1 as distinct origins for CORS purposes.
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]

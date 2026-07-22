@@ -3,15 +3,17 @@ import "./App.css";
 import { HoldingsView } from "./views/HoldingsView";
 import { DashboardView } from "./views/DashboardView";
 import { HistoryView } from "./views/HistoryView";
+import { CompositionView } from "./views/CompositionView";
 import { TransactionsView } from "./views/TransactionsView";
 import { SimulationView } from "./views/SimulationView";
 
-type Tab = "holdings" | "dashboard" | "history" | "transactions" | "simulation";
+type Tab = "holdings" | "dashboard" | "history" | "composition" | "transactions" | "simulation";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "holdings", label: "Holdings" },
   { key: "dashboard", label: "Dashboard" },
   { key: "history", label: "Storico" },
+  { key: "composition", label: "Composizione" },
   { key: "transactions", label: "Transazioni" },
   { key: "simulation", label: "Simulazione" },
 ];
@@ -37,6 +39,7 @@ function App() {
         {tab === "holdings" && <HoldingsView />}
         {tab === "dashboard" && <DashboardView />}
         {tab === "history" && <HistoryView />}
+        {tab === "composition" && <CompositionView />}
         {tab === "transactions" && <TransactionsView />}
         {tab === "simulation" && <SimulationView />}
       </main>

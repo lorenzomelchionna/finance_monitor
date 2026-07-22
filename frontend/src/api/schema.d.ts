@@ -205,6 +205,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/composition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Composition
+         * @description Value-weighted geographic + sector exposure of the portfolio, from
+         *     stored look-through breakdowns.
+         */
+        get: operations["get_composition_api_composition_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/composition/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Composition
+         * @description Fetch geo/sector breakdowns for every held instrument from the
+         *     composition provider (JustETF) and store them.
+         */
+        post: operations["refresh_composition_api_composition_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -235,6 +277,28 @@ export interface components {
         Body_import_transactions_api_transactions_import_post: {
             /** File */
             file: string;
+        };
+        /** CompositionOut */
+        CompositionOut: {
+            /** Dimensions */
+            dimensions: {
+                [key: string]: components["schemas"]["WeightSliceOut"][];
+            };
+            /** Coverage */
+            coverage: {
+                [key: string]: number;
+            };
+            /** Missing */
+            missing: {
+                [key: string]: string[];
+            };
+        };
+        /** CompositionRefreshOut */
+        CompositionRefreshOut: {
+            /** Updated */
+            updated: string[];
+            /** Failed */
+            failed: string[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -555,6 +619,13 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WeightSliceOut */
+        WeightSliceOut: {
+            /** Key */
+            key: string;
+            /** Weight */
+            weight: number;
         };
     };
     responses: never;
@@ -945,6 +1016,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_composition_api_composition_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompositionOut"];
+                };
+            };
+        };
+    };
+    refresh_composition_api_composition_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompositionRefreshOut"];
                 };
             };
         };
