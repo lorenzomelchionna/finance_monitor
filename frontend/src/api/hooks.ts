@@ -78,6 +78,23 @@ export function useUpdateInstrument() {
   });
 }
 
+/** Look up exchange tickers for instruments the import created without
+ * one — the broker export carries ISINs but no symbols. */
+export function useResolveTickers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await api.POST("/api/instruments/resolve-tickers");
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: INSTRUMENTS_KEY });
+      queryClient.invalidateQueries({ queryKey: POSITIONS_KEY });
+    },
+  });
+}
+
 export function usePortfolioSummary() {
   return useQuery({
     queryKey: PORTFOLIO_SUMMARY_KEY,

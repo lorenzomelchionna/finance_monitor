@@ -136,3 +136,42 @@ def test_excluded_instrument_leaves_the_portfolio_summary():
         assert summary["total_cost_base"] == 0.0
     finally:
         app.dependency_overrides.clear()
+
+
+class FakeTickerProvider:
+    def __init__(self, by_isin):
+        self._by_isin = by_isin
+
+    def resolve_ticker(self, isin: str):
+        return self._by_isin.get(isin)
+
+
+def test_resolve_tickers_fills_in_what_the_export_lacks(monkeypatch):
+    """The broker export has no ticker, so imported instruments can't be
+    priced until one is resolved."""
+    from app.providers import registry
+
+    client, engine = _client_with_fresh_db()
+    try:
+        known = _seed(engine, isin="IE00BK5BQT80", ticker=None, name="All World", auto_price_enabled=False)
+        etc = _seed(engine, isin="IE00B8XB7377", ticker=None, name="Gold ETC", auto_price_enabled=False)
+
+        monkeypatch.setitem(
+            registry._TICKER_PROVIDERS,
+            "justetf",
+            FakeTickerProvider({"IE00BK5BQT80": "VWCE.MI"}),  # ETC unknown
+        )
+
+        body = client.post("/api/instruments/resolve-tickers").json()
+        assert body["resolved"] == {"All World": "VWCE.MI"}
+        assert body["unresolved"] == ["Gold ETC"]
+
+        instruments = {i["id"]: i for i in client.get("/api/instruments").json()}
+        # Resolved: ticker set and automatic pricing switched on.
+        assert instruments[known]["ticker"] == "VWCE.MI"
+        assert instruments[known]["auto_price_enabled"] is True
+        # Unresolved: left for manual entry rather than guessed at.
+        assert instruments[etc]["ticker"] is None
+        assert instruments[etc]["auto_price_enabled"] is False
+    finally:
+        app.dependency_overrides.clear()

@@ -36,6 +36,20 @@ _DIMENSIONS = {
     "sector": ("sectors", "loadMoreSectors"),
 }
 
+# The profile page lists one row per exchange, keyed by MIC code. Map the
+# ones we can translate to a yfinance suffix, in preference order:
+# Borsa Italiana first, since the broker here is Italian and that's where
+# the trades actually happened (same listing, same currency). The rest
+# are fallbacks for instruments not listed in Milan.
+_EXCHANGE_SUFFIXES: list[tuple[str, str]] = [
+    ("xmil", ".MI"),  # Borsa Italiana
+    ("xetr", ".DE"),  # XETRA
+    ("xams", ".AS"),  # Euronext Amsterdam
+    ("xpar", ".PA"),  # Euronext Paris
+    ("xlon", ".L"),  # London Stock Exchange
+    ("xswx", ".SW"),  # SIX Swiss Exchange
+]
+
 
 def _opener() -> urllib.request.OpenerDirector:
     # Fresh cookie jar per fetch: the expand link is a toggle whose state
@@ -84,6 +98,27 @@ def _expand_href(page_html: str, expand_testid: str) -> str | None:
 
 
 class JustEtfCompositionProvider:
+    def resolve_ticker(self, isin: str) -> str | None:
+        """ISIN -> exchange-suffixed ticker, preferring Borsa Italiana.
+        Returns None when the page has no listing we can map (or the
+        instrument isn't on JustETF at all — it only covers UCITS ETFs,
+        so ETCs and single stocks come back empty)."""
+        page = _get(_opener(), _PROFILE_URL.format(isin=isin))
+        if page is None:
+            return None
+
+        for mic, suffix in _EXCHANGE_SUFFIXES:
+            m = re.search(
+                rf'data-testid="etf-trade-data-panel_row-{mic}_ticker"[^>]*>([^<]*)<', page
+            )
+            if not m:
+                continue
+            ticker = m.group(1).strip()
+            # A dash marks a listing with no ticker on that venue.
+            if ticker and ticker != "-":
+                return f"{ticker}{suffix}"
+        return None
+
     def get_breakdowns(self, ref: InstrumentRef) -> dict[str, list[BreakdownWeight]] | None:
         if not ref.isin:
             return None

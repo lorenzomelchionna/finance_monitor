@@ -6,25 +6,31 @@ of truth for the portfolio: every ISIN it mentions becomes an Instrument
 nothing is entered by hand. The user then chooses which instruments to
 count via `Instrument.included`.
 
-New instruments arrive without a ticker (the export carries only ISIN
-and the broker's security name), so automatic pricing stays off until
-the user supplies one.
+The export carries only ISIN and the broker's security name, so the
+ticker needed for price lookups is resolved from the ISIN on creation.
+When that fails (the source only covers UCITS ETFs, so ETCs and single
+stocks come back empty) the instrument is still created — automatic
+pricing simply stays off until the user fills the ticker in.
 """
 
 from collections import defaultdict
 
 from sqlmodel import Session, select
 
+from app.config import get_settings
 from app.models.instrument import Instrument
 from app.models.transaction import Transaction
+from app.providers.registry import resolve_ticker
 from app.services.fineco_import import parse_fineco_xlsx
 
 
 def import_fineco_xlsx(session: Session, data: bytes) -> dict:
+    settings = get_settings()
     parsed = parse_fineco_xlsx(data)
 
     instruments = session.exec(select(Instrument)).all()
     instrument_by_isin = {i.isin: i for i in instruments if i.isin}
+    used_tickers = {i.ticker for i in instruments if i.ticker}
 
     existing_keys = set(session.exec(select(Transaction.dedup_key)).all())
 
@@ -35,15 +41,23 @@ def import_fineco_xlsx(session: Session, data: bytes) -> dict:
     for p in parsed:
         instrument = instrument_by_isin.get(p.isin)
         if instrument is None:
+            # Not in the export — look it up so the user doesn't have to.
+            ticker = resolve_ticker(p.isin, settings.default_composition_provider)
+            if ticker and ticker in used_tickers:
+                # Two ISINs resolving to the same symbol would violate the
+                # unique constraint; leave the later one manual.
+                ticker = None
             instrument = Instrument(
                 isin=p.isin,
-                ticker=None,  # not in the export; user adds it for pricing
+                ticker=ticker,
                 name=p.name,
                 currency=p.currency,
-                # No ticker yet, so a price fetch would only fail noisily.
-                auto_price_enabled=False,
+                # Without a ticker a price fetch would only fail noisily.
+                auto_price_enabled=bool(ticker),
                 included=True,
             )
+            if ticker:
+                used_tickers.add(ticker)
             session.add(instrument)
             session.commit()
             session.refresh(instrument)

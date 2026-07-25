@@ -12,12 +12,43 @@ from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
+from app.config import get_settings
 from app.models.instrument import Instrument
+from app.providers.registry import resolve_ticker
 from app.schemas.instrument import InstrumentUpdate
 
 
 def list_instruments(session: Session) -> list[Instrument]:
     return session.exec(select(Instrument).order_by(Instrument.name)).all()
+
+
+def resolve_missing_tickers(session: Session) -> dict:
+    """Fill in tickers for instruments that don't have one, so imported
+    positions can be priced automatically. Instruments the source can't
+    resolve (ETCs, single stocks) are reported back for manual entry."""
+    settings = get_settings()
+    instruments = session.exec(select(Instrument)).all()
+    used = {i.ticker for i in instruments if i.ticker}
+
+    resolved: dict[str, str] = {}
+    unresolved: list[str] = []
+
+    for instrument in instruments:
+        if instrument.ticker or not instrument.isin:
+            continue
+        ticker = resolve_ticker(instrument.isin, settings.default_composition_provider)
+        if not ticker or ticker in used:
+            unresolved.append(instrument.name)
+            continue
+        instrument.ticker = ticker
+        instrument.auto_price_enabled = True
+        instrument.updated_at = datetime.now(timezone.utc)
+        session.add(instrument)
+        used.add(ticker)
+        resolved[instrument.name] = ticker
+
+    session.commit()
+    return {"resolved": resolved, "unresolved": unresolved}
 
 
 def update_instrument(

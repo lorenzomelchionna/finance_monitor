@@ -1,4 +1,4 @@
-import { useInstruments, usePositions, useUpdateInstrument } from "../api/hooks";
+import { useInstruments, usePositions, useResolveTickers, useUpdateInstrument } from "../api/hooks";
 import { ImportTransactions } from "../components/ImportTransactions";
 import { InfoTip } from "../components/InfoTip";
 import { InstrumentRow } from "../components/InstrumentRow";
@@ -17,6 +17,9 @@ export function HoldingsView() {
   const { data: instruments, isLoading, error } = useInstruments();
   const { data: positions } = usePositions();
   const updateInstrument = useUpdateInstrument();
+  const resolveTickers = useResolveTickers();
+
+  const missingTicker = (instruments ?? []).filter((i) => !i.ticker).length;
 
   // Positions exist only for included instruments with a live quantity;
   // index them so each row can show its derived figures.
@@ -45,6 +48,34 @@ export function HoldingsView() {
             {instruments ? `${includedCount} di ${instruments.length} inclusi` : ""}
           </span>
         </div>
+
+        {missingTicker > 0 && (
+          <div className="import-box">
+            <p className="placeholder">
+              {missingTicker} strumenti senza ticker: i prezzi non si aggiornano da soli. Provo a
+              ricavarlo dall'ISIN.
+            </p>
+            <button
+              type="button"
+              onClick={() => resolveTickers.mutate()}
+              disabled={resolveTickers.isPending}
+            >
+              {resolveTickers.isPending ? "Cerco…" : "🔎 Trova ticker automaticamente"}
+            </button>
+          </div>
+        )}
+        {resolveTickers.data && (
+          <p className="import-result">
+            {Object.keys(resolveTickers.data.resolved).length > 0
+              ? `Trovati: ${Object.entries(resolveTickers.data.resolved)
+                  .map(([name, t]) => `${name} → ${t}`)
+                  .join(", ")}. `
+              : ""}
+            {resolveTickers.data.unresolved.length > 0
+              ? `Da inserire a mano (non coperti dalla fonte): ${resolveTickers.data.unresolved.join(", ")}.`
+              : ""}
+          </p>
+        )}
 
         {isLoading && <p className="placeholder">Caricamento…</p>}
         {error && <p className="error-banner">Errore nel caricamento degli strumenti.</p>}

@@ -34,3 +34,10 @@ class InstrumentPositionOut(BaseModel):
     invested: float
     commissions: float
     transaction_count: int
+
+
+class TickerResolveOut(BaseModel):
+    # instrument name -> resolved ticker
+    resolved: dict[str, str]
+    # names the source couldn't resolve; these need a manual ticker
+    unresolved: list[str]

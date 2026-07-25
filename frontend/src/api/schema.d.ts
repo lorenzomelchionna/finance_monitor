@@ -41,6 +41,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/instruments/resolve-tickers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve Tickers
+         * @description Look up the exchange ticker for instruments that lack one, so
+         *     imported positions can be priced without typing anything.
+         */
+        post: operations["resolve_tickers_api_instruments_resolve_tickers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/positions": {
         parameters: {
             query?: never;
@@ -534,6 +555,15 @@ export interface components {
             /** Currency */
             currency?: string | null;
         };
+        /** TickerResolveOut */
+        TickerResolveOut: {
+            /** Resolved */
+            resolved: {
+                [key: string]: string;
+            };
+            /** Unresolved */
+            unresolved: string[];
+        };
         /** TransactionOut */
         TransactionOut: {
             /** Id */
@@ -650,6 +680,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_tickers_api_instruments_resolve_tickers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TickerResolveOut"];
                 };
             };
         };

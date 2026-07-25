@@ -13,7 +13,12 @@ from sqlmodel import Session, select
 from app.db import get_session
 from app.models.instrument import Instrument
 from app.models.transaction import Transaction
-from app.schemas.instrument import InstrumentOut, InstrumentPositionOut, InstrumentUpdate
+from app.schemas.instrument import (
+    InstrumentOut,
+    InstrumentPositionOut,
+    InstrumentUpdate,
+    TickerResolveOut,
+)
 from app.services import holdings_service
 from app.services.positions_service import get_positions
 
@@ -37,6 +42,13 @@ def update_instrument(
     if instrument is None:
         raise HTTPException(status_code=404, detail="Instrument not found")
     return instrument
+
+
+@router.post("/instruments/resolve-tickers", response_model=TickerResolveOut)
+def resolve_tickers(session: Session = Depends(get_session)) -> TickerResolveOut:
+    """Look up the exchange ticker for instruments that lack one, so
+    imported positions can be priced without typing anything."""
+    return TickerResolveOut.model_validate(holdings_service.resolve_missing_tickers(session))
 
 
 @router.get("/positions", response_model=list[InstrumentPositionOut])

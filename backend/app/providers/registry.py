@@ -20,6 +20,7 @@ from app.providers.base import (
     InstrumentRef,
     PriceProvider,
     PriceQuote,
+    TickerProvider,
 )
 from app.providers.justetf_provider import JustEtfCompositionProvider
 from app.providers.manual_provider import ManualPriceProvider
@@ -55,8 +56,16 @@ _HISTORY_PROVIDERS: dict[str, HistoryProvider] = {
 # Composition look-through: scraped from JustETF per ISIN. Manual entry
 # (CompositionBreakdown rows with source="manual") is the fallback when
 # a fetch fails or the source lacks a dimension.
+_justetf = JustEtfCompositionProvider()
+
 _COMPOSITION_PROVIDERS: dict[str, CompositionProvider] = {
-    "justetf": JustEtfCompositionProvider(),
+    "justetf": _justetf,
+}
+
+# Same instance: the JustETF profile page carries both the look-through
+# weights and the per-exchange listings we resolve tickers from.
+_TICKER_PROVIDERS: dict[str, TickerProvider] = {
+    "justetf": _justetf,
 }
 
 
@@ -106,6 +115,13 @@ def resolve_composition(
     if provider is None:
         return None
     return provider.get_breakdowns(to_instrument_ref(instrument))
+
+
+def resolve_ticker(isin: str, provider_name: str) -> str | None:
+    provider = _TICKER_PROVIDERS.get(provider_name)
+    if provider is None:
+        return None
+    return provider.resolve_ticker(isin)
 
 
 def resolve_fx_rate(source_currency: str, target_currency: str, provider_name: str) -> float | None:

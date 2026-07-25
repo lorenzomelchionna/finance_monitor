@@ -74,6 +74,15 @@ class FxProvider(Protocol):
     def get_rate(self, base: str, quote: str) -> FxRate | None: ...
 
 
+class TickerProvider(Protocol):
+    """Resolve an ISIN to an exchange-suffixed ticker usable for price
+    lookups. Broker exports carry ISINs but rarely tickers, so without
+    this every imported instrument would need one typed in by hand.
+    Returns None when the symbol can't be resolved."""
+
+    def resolve_ticker(self, isin: str) -> str | None: ...
+
+
 class CompositionProvider(Protocol):
     """Look-through geo/sector weights for an instrument. Returns a map
     keyed by dimension ("geography" / "sector") — a single source page
