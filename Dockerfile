@@ -6,7 +6,11 @@
 FROM node:22-slim AS frontend
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci
+# --legacy-peer-deps: openapi-typescript@7 still declares a peer range of
+# typescript@^5 while this project is on TS 6. It's a codegen-only dev
+# tool (npm run gen:api) that works fine on 6 — the range is just stale
+# upstream — but strict peer resolution makes `npm ci` refuse to install.
+RUN npm ci --legacy-peer-deps
 COPY frontend/ ./
 RUN npm run build
 
