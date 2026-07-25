@@ -5,16 +5,26 @@ frequently lacks coverage for European UCITS ETFs (ISIN-only lookups,
 exchange-suffixed tickers like .MI/.DE, funds in liquidation). Any
 lookup failure or missing field returns None rather than raising, so
 the registry can degrade to the manual provider without a crash.
+
+`yfinance` (and the pandas it pulls in) is imported lazily inside the
+methods rather than at module scope: it costs ~47 MB resident, and most
+requests (dashboard, holdings, transactions) never touch a quote. The
+registry instantiates this provider eagerly, so a module-level import
+would pay that cost on every boot.
 """
 
 import logging
 from datetime import datetime, timezone
 
-import yfinance as yf
-
 from app.providers.base import FxRate, HistoryPoint, InstrumentRef, PriceQuote
 
 logger = logging.getLogger(__name__)
+
+
+def _yf():
+    import yfinance
+
+    return yfinance
 
 
 class YFinanceProvider:
@@ -22,7 +32,7 @@ class YFinanceProvider:
         if not ref.ticker:
             return None
         try:
-            fast_info = yf.Ticker(ref.ticker).fast_info
+            fast_info = _yf().Ticker(ref.ticker).fast_info
             price = fast_info.get("lastPrice")
             currency = fast_info.get("currency") or ref.currency
         except Exception:
@@ -39,7 +49,7 @@ class YFinanceProvider:
         try:
             # period="max" = oldest available; auto_adjust folds in
             # splits/dividends so the series is comparable over time.
-            frame = yf.Ticker(ref.ticker).history(period="max", interval="1d", auto_adjust=True)
+            frame = _yf().Ticker(ref.ticker).history(period="max", interval="1d", auto_adjust=True)
         except Exception:
             logger.warning("yfinance history lookup failed for %s", ref.ticker, exc_info=True)
             return None
@@ -63,7 +73,7 @@ class YFinanceProvider:
 
         symbol = f"{base}{quote}=X"
         try:
-            fast_info = yf.Ticker(symbol).fast_info
+            fast_info = _yf().Ticker(symbol).fast_info
             rate = fast_info.get("lastPrice")
         except Exception:
             logger.warning("yfinance FX lookup failed for %s", symbol, exc_info=True)

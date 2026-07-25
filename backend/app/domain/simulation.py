@@ -62,11 +62,19 @@ def run_montecarlo(params: SimulationParams) -> SimulationResult:
     # Lognormal shocks: mu adjusted by -0.5*sigma^2 so E[exp(shock)]
     # equals (1 + monthly_return), the standard lognormal correction.
     mu = np.log(1 + monthly_return) - 0.5 * monthly_vol**2
-    shocks = rng.normal(loc=mu, scale=monthly_vol, size=(params.n_paths, n_months))
-    growth_factors = np.exp(shocks)
 
+    # Shocks are drawn one month at a time into a reusable (n_paths,)
+    # buffer rather than materialising two full (n_paths, n_months)
+    # matrices. Same maths, but peak memory drops from ~3 large arrays to
+    # 1 — and since CPython rarely returns freed heap to the OS, that peak
+    # would otherwise stay resident (and billable) for the process' life.
+    step = np.empty(params.n_paths)
     for t in range(1, n_months + 1):
-        paths[:, t] = paths[:, t - 1] * growth_factors[:, t - 1] + params.monthly_contribution
+        rng.standard_normal(params.n_paths, out=step)
+        step *= monthly_vol
+        step += mu
+        np.exp(step, out=step)
+        paths[:, t] = paths[:, t - 1] * step + params.monthly_contribution
 
     percentiles = np.percentile(paths, PERCENTILES, axis=0)
     final_values = paths[:, -1]

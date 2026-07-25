@@ -14,8 +14,6 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from io import BytesIO
 
-import openpyxl
-
 from app.models.transaction import TransactionSign
 
 
@@ -81,6 +79,11 @@ def _to_float(value: object) -> float:
 
 
 def parse_fineco_xlsx(data: bytes) -> list[ParsedTransaction]:
+    # Imported here rather than at module scope: it's only needed on an
+    # actual upload, and keeping it out of the boot path saves resident
+    # memory on a container billed by RAM.
+    import openpyxl
+
     wb = openpyxl.load_workbook(BytesIO(data), data_only=True)
     ws = wb.worksheets[0]
     rows = list(ws.iter_rows(values_only=True))
