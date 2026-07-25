@@ -86,6 +86,14 @@ def require_password_configured() -> None:
             "FM_REQUIRE_AUTH is on but FM_PASSWORD is empty. "
             "Set FM_PASSWORD before starting."
         )
+    # An embedded newline or tab is almost always a paste or shell-capture
+    # accident. Such a value can never travel in an Authorization header,
+    # so the user would be locked out of their own app with no clue why.
+    if any(c in settings.password for c in "\n\r\t"):
+        raise RuntimeError(
+            "FM_PASSWORD contains a newline or tab, so it can never be sent "
+            "in an Authorization header. Re-set it as a single line."
+        )
 
 
 __all__ = ["basic_auth_middleware", "require_password_configured", "HTTPException"]

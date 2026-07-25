@@ -9,6 +9,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Anchor persisted data to an absolute dir so the DB file is the same
@@ -35,6 +36,15 @@ class Settings(BaseSettings):
     username: str = "lorenzo"
     password: str = ""
     require_auth: bool = False
+
+    # Credentials set through a shell or a dashboard field routinely pick
+    # up a trailing newline or stray spaces. A browser can't send those in
+    # a Basic Auth header, so an untrimmed value locks the user out of
+    # their own app with no useful error. Trim both sides.
+    @field_validator("username", "password", mode="after")
+    @classmethod
+    def _trim(cls, v: str) -> str:
+        return v.strip()
 
     # Serve the built frontend from this process (single service, less
     # RAM than a second one). Empty => API only, as in local dev where
