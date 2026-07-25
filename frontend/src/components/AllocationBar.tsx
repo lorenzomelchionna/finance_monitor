@@ -1,6 +1,5 @@
+import { SERIES_COLORS } from "../lib/chartTheme";
 import { money, percent } from "../lib/format";
-
-const COLORS = ["#a06bff", "#3bc9ff", "#f0b429", "#3ddc97", "#ff6b81", "#8f6bff", "#3bffd5"];
 
 interface Slice {
   key: string;
@@ -46,7 +45,7 @@ export function AllocationBar({
             title={`${s.key}: ${percent(s.value / total)}`}
             style={{
               width: `${(s.value / total) * 100}%`,
-              background: COLORS[i % COLORS.length],
+              background: SERIES_COLORS[i % SERIES_COLORS.length],
             }}
           />
         ))}
@@ -61,7 +60,7 @@ export function AllocationBar({
                 width: 8,
                 height: 8,
                 borderRadius: 2,
-                background: COLORS[i % COLORS.length],
+                background: SERIES_COLORS[i % SERIES_COLORS.length],
                 flexShrink: 0,
               }}
             />

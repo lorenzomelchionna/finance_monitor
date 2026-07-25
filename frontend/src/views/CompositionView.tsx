@@ -49,7 +49,7 @@ export function CompositionView() {
               className={selection === "portfolio" ? "chip active" : "chip"}
               onClick={() => setSelection("portfolio")}
             >
-              📊 Portafoglio (aggregato)
+              Portafoglio (aggregato)
             </button>
             {data.instruments.map((i) => (
               <button

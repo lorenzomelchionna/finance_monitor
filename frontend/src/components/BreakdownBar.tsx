@@ -9,47 +9,72 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-const COLORS = [
-  "#aa3bff", "#3bc9ff", "#ffb23b", "#3bff8f", "#ff3b6e", "#8f6bff",
-  "#3bffd5", "#ff8f3b", "#6e9bff", "#c0ff3b", "#ff3bd5", "#3b8fff", "#9aa0aa",
-];
+import { axisProps, chart, SERIES_COLORS } from "../lib/chartTheme";
+import { percent } from "../lib/format";
 
 interface Slice {
   key: string;
   weight: number; // 0..1
 }
 
-/** Horizontal bar chart for a composition breakdown — clearer than a pie
- * when there are many categories (geography can be 10+). Sorted order is
- * whatever the caller passes (backend sorts desc). */
+interface TipProps {
+  active?: boolean;
+  payload?: { payload?: { name: string; value: number } }[];
+}
+
+function BarTooltip({ active, payload }: TipProps) {
+  const d = active ? payload?.[0]?.payload : null;
+  if (!d) return null;
+  return (
+    <div className="chart-tooltip">
+      <div className="chart-tooltip-date">{d.name}</div>
+      <div style={{ color: chart.accent }}>{percent(d.value / 100)}</div>
+    </div>
+  );
+}
+
+/** Horizontal bars rather than a pie: geography routinely has 10+
+ * categories, where pie slices below ~5% become unreadable and the
+ * legend does all the work anyway. */
 export function BreakdownBar({ slices }: { slices: Slice[] }) {
   if (slices.length === 0) {
     return <p className="placeholder">Nessun dato. Usa "Aggiorna composizione".</p>;
   }
 
   const data = slices.map((s) => ({ name: s.key, value: s.weight * 100 }));
-  const height = Math.max(160, data.length * 34 + 24);
+  const height = Math.max(160, data.length * 30 + 24);
+  const maxValue = Math.max(...data.map((d) => d.value));
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 48, bottom: 4, left: 8 }}>
-        <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.2} />
-        <XAxis type="number" domain={[0, "auto"]} tickFormatter={(v) => `${v}%`} />
-        <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 13 }} />
-        <Tooltip
-          formatter={(value) => [`${Number(value).toFixed(1)}%`, "Peso"]}
-          cursor={{ fill: "rgba(170,59,255,0.08)" }}
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 0, right: 44, bottom: 0, left: 0 }}
+        barCategoryGap={6}
+      >
+        <CartesianGrid stroke={chart.grid} strokeDasharray="2 4" horizontal={false} />
+        {/* Headroom so the value label at the end of the longest bar
+            isn't clipped by the plot edge. */}
+        <XAxis type="number" domain={[0, maxValue * 1.12]} hide />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={150}
+          {...axisProps}
+          tick={{ fill: chart.muted, fontSize: 12 }}
         />
-        <Bar dataKey="value" isAnimationActive={false} radius={[0, 4, 4, 0]}>
+        <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(160,107,255,0.08)" }} />
+        <Bar dataKey="value" isAnimationActive={false} radius={[0, 3, 3, 0]} maxBarSize={18}>
           {data.map((entry, i) => (
-            <Cell key={entry.name} fill={COLORS[i % COLORS.length]} />
+            <Cell key={entry.name} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
           ))}
           <LabelList
             dataKey="value"
             position="right"
-            fontSize={12}
-            formatter={(v) => `${Number(v).toFixed(1)}%`}
+            fontSize={11}
+            fill={chart.muted}
+            formatter={(v) => percent(Number(v) / 100)}
           />
         </Bar>
       </BarChart>

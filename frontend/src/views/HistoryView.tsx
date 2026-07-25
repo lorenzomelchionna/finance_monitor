@@ -163,8 +163,8 @@ export function HistoryView() {
           unit={selection === "portfolio" ? baseCurrency : undefined}
         />
         {showBuys && markers.length > 0 && (
-          <p className="placeholder">
-            🔴 {markers.length} punti di acquisto nell'orizzonte selezionato.
+          <p className="placeholder" style={{ marginTop: "var(--s2)" }}>
+            {markers.length} acquisti nell’orizzonte selezionato.
           </p>
         )}
       </section>
@@ -178,7 +178,7 @@ export function HistoryView() {
             className={selection === "portfolio" ? "chip active" : "chip"}
             onClick={() => setSelection("portfolio")}
           >
-            📊 Portafoglio (aggregato)
+            Portafoglio (aggregato)
           </button>
           {data.series.map((s) => (
             <button

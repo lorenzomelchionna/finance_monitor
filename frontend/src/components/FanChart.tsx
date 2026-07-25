@@ -9,6 +9,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { axisProps, chart, gridProps, noAnimation } from "../lib/chartTheme";
+import { compact, money } from "../lib/format";
 
 interface Props {
   months: number[];
@@ -19,14 +21,46 @@ interface Props {
   p95: number[];
 }
 
-/** Percentile "fan" chart: stacked transparent/translucent Area bands
- * (p5-p25, p25-p75, p75-p95) plus a solid median line. Recharts has no
- * native band-chart primitive, so each band is modeled as a delta
- * stacked on top of the previous one (classic stacked-area trick).
- *
- * Note: isAnimationActive is off on every series — Recharts' default
- * entrance animation never completes in this environment (observed on
- * CurrencyExposurePie too), leaving the chart blank. */
+interface TipProps {
+  active?: boolean;
+  label?: string | number;
+  payload?: { payload?: Record<string, number> }[];
+}
+
+/** Bands are stored as deltas for stacking, so the tooltip has to
+ * reconstruct the actual percentile values rather than show the raw
+ * series — otherwise it would report band widths, not outcomes. */
+function FanTooltip({ active, payload, label }: TipProps) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+
+  const months = Number(label);
+  const rows: [string, number][] = [
+    ["p95", d.p5 + d.band_5_25 + d.band_25_75 + d.band_75_95],
+    ["p75", d.p5 + d.band_5_25 + d.band_25_75],
+    ["mediana", d.p50],
+    ["p25", d.p5 + d.band_5_25],
+    ["p5", d.p5],
+  ];
+
+  return (
+    <div className="chart-tooltip">
+      <div className="chart-tooltip-date">
+        Anno {(months / 12).toFixed(1)}
+      </div>
+      {rows.map(([name, value]) => (
+        <div key={name} style={{ color: name === "mediana" ? chart.accent : chart.muted }}>
+          {name} {money(value, "EUR", 0)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Percentile "fan": Recharts has no band primitive, so each band is a
+ * delta stacked on the one below (classic stacked-area trick), with the
+ * median drawn on top as a solid line. */
 export function FanChart({ months, p5, p25, p50, p75, p95 }: Props) {
   const data = months.map((month, i) => ({
     month,
@@ -37,59 +71,60 @@ export function FanChart({ months, p5, p25, p50, p75, p95 }: Props) {
     p50: p50[i],
   }));
 
+  // One tick per year, thinned so a long horizon doesn't crowd the axis.
+  const yearStep = Math.max(1, Math.ceil(months.length / 12 / 8));
+  const ticks = months.filter((m) => m % (12 * yearStep) === 0);
+
   return (
     <ResponsiveContainer width="100%" height={360}>
-      <ComposedChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-        <XAxis dataKey="month" tickFormatter={(m) => `${(m / 12).toFixed(0)}a`} />
-        <YAxis tickFormatter={(v) => Number(v).toLocaleString()} width={80} />
-        <Tooltip
-          labelFormatter={(m) => `Mese ${m} (anno ${(Number(m) / 12).toFixed(1)})`}
-          formatter={(value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+      <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <CartesianGrid {...gridProps} />
+        <XAxis
+          dataKey="month"
+          ticks={ticks}
+          tickFormatter={(m) => `${Math.round(Number(m) / 12)}a`}
+          {...axisProps}
         />
-        <Legend />
-        <Area
-          dataKey="p5"
-          stackId="fan"
-          stroke="none"
-          fill="transparent"
-          isAnimationActive={false}
-          legendType="none"
-        />
+        <YAxis tickFormatter={(v) => compact(Number(v))} width={52} {...axisProps} />
+        <Tooltip content={<FanTooltip />} cursor={{ stroke: chart.grid, strokeWidth: 1 }} />
+        <Legend iconSize={8} wrapperStyle={{ fontSize: 12, color: chart.muted, paddingTop: 8 }} />
+
+        {/* Invisible base so the bands stack from p5 upward. */}
+        <Area dataKey="p5" stackId="fan" stroke="none" fill="transparent" legendType="none" {...noAnimation} />
         <Area
           dataKey="band_5_25"
           stackId="fan"
           stroke="none"
-          fill="#aa3bff"
+          fill={chart.accent}
           fillOpacity={0.12}
-          isAnimationActive={false}
           name="p5–p25"
+          {...noAnimation}
         />
         <Area
           dataKey="band_25_75"
           stackId="fan"
           stroke="none"
-          fill="#aa3bff"
-          fillOpacity={0.3}
-          isAnimationActive={false}
+          fill={chart.accent}
+          fillOpacity={0.28}
           name="p25–p75"
+          {...noAnimation}
         />
         <Area
           dataKey="band_75_95"
           stackId="fan"
           stroke="none"
-          fill="#aa3bff"
+          fill={chart.accent}
           fillOpacity={0.12}
-          isAnimationActive={false}
           name="p75–p95"
+          {...noAnimation}
         />
         <Line
           dataKey="p50"
-          stroke="#3bc9ff"
+          stroke={chart.accent}
           strokeWidth={2}
           dot={false}
-          isAnimationActive={false}
           name="Mediana"
+          {...noAnimation}
         />
       </ComposedChart>
     </ResponsiveContainer>
