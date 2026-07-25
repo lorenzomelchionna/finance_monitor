@@ -13,10 +13,9 @@ from sqlmodel import Session, select
 from app.config import get_settings
 from app.domain.history import actual_portfolio_value, aggregate_portfolio_value
 from app.domain.performance import TxnLike, cumulative_invested
-from app.models.holding import Holding
-from app.models.instrument import Instrument
 from app.models.transaction import Transaction
 from app.providers.registry import resolve_history
+from app.services.positions_service import get_positions
 
 
 def get_portfolio_history(session: Session) -> dict:
@@ -27,16 +26,9 @@ def get_portfolio_history(session: Session) -> dict:
     settings = get_settings()
     base_currency = settings.base_currency
 
-    holdings = session.exec(select(Holding)).all()
-    quantities: dict[int, float] = defaultdict(float)
-    for h in holdings:
-        quantities[h.instrument_id] += h.quantity
-
-    instruments = {
-        i.id: i
-        for i in session.exec(select(Instrument)).all()
-        if i.id in quantities
-    }
+    derived = get_positions(session)
+    quantities: dict[int, float] = {p.instrument.id: p.quantity for p in derived}
+    instruments = {p.instrument.id: p.instrument for p in derived}
 
     series_out: list[dict] = []
     warnings: list[str] = []

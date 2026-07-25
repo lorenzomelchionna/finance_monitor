@@ -1,7 +1,10 @@
 """Instrument: the tradeable security itself (ETF, stock, bond, ...).
 
-Decoupled from Holding so future features (multiple lots, price/composition
-history) can attach to the instrument without duplicating identity data.
+Instruments are created by the broker import — the Fineco movements
+export is the source of truth for what was actually traded. Positions
+(quantity, cost) are derived from the transaction ledger rather than
+stored here; this row only carries identity, pricing hints, and whether
+the user wants it counted towards the portfolio.
 """
 
 import enum
@@ -35,6 +38,11 @@ class Instrument(SQLModel, table=True):
     # Per-instrument opt-out of automatic price fetching (e.g. instrument
     # not covered by the provider, or in liquidation) — forces manual pricing.
     auto_price_enabled: bool = Field(default=True)
+
+    # Whether this instrument counts towards the portfolio. The import
+    # decides *what was traded*; this flag is the user's say over *what
+    # to track* — excluding something without discarding its history.
+    included: bool = Field(default=True)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

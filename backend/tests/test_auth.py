@@ -30,22 +30,22 @@ def protected(monkeypatch):
 
 
 def test_rejects_missing_credentials(protected):
-    resp = protected.get("/api/holdings")
+    resp = protected.get("/api/instruments")
     assert resp.status_code == 401
     # Prompts the browser's native login dialog.
     assert resp.headers["www-authenticate"].startswith("Basic")
 
 
 def test_rejects_wrong_password(protected):
-    assert protected.get("/api/holdings", headers=_auth("lorenzo", "nope")).status_code == 401
+    assert protected.get("/api/instruments", headers=_auth("lorenzo", "nope")).status_code == 401
 
 
 def test_rejects_wrong_username(protected):
-    assert protected.get("/api/holdings", headers=_auth("intruder", "s3cret")).status_code == 401
+    assert protected.get("/api/instruments", headers=_auth("intruder", "s3cret")).status_code == 401
 
 
 def test_accepts_correct_credentials(protected):
-    assert protected.get("/api/holdings", headers=_auth("lorenzo", "s3cret")).status_code == 200
+    assert protected.get("/api/instruments", headers=_auth("lorenzo", "s3cret")).status_code == 200
 
 
 def test_health_is_exempt_so_platform_probes_work(protected):
@@ -60,7 +60,7 @@ def test_disabled_when_no_password_configured(monkeypatch):
     if hasattr(basic_auth_middleware, "_warned"):
         del basic_auth_middleware._warned
     client = TestClient(app)
-    assert client.get("/api/holdings").status_code == 200
+    assert client.get("/api/instruments").status_code == 200
     get_settings.cache_clear()
 
 

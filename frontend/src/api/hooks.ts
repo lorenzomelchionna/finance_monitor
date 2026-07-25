@@ -2,9 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import type { components } from "./schema";
 
-export type HoldingOut = components["schemas"]["HoldingOut"];
-export type HoldingCreate = components["schemas"]["HoldingCreate"];
-export type HoldingUpdate = components["schemas"]["HoldingUpdate"];
+/** An instrument plus its ledger-derived position (quantity, cost).
+ * Distinct from the portfolio summary's PositionOut, which is a *valued*
+ * position (market value, P/L, XIRR). */
+export type PositionOut = components["schemas"]["InstrumentPositionOut"];
+export type InstrumentOut = components["schemas"]["InstrumentOut"];
 export type PortfolioSummaryOut = components["schemas"]["PortfolioSummaryOut"];
 export type PriceStatusOut = components["schemas"]["PriceStatusOut"];
 export type MonteCarloRequest = components["schemas"]["MonteCarloRequest"];
@@ -16,86 +18,62 @@ export type ImportResultOut = components["schemas"]["ImportResultOut"];
 export type CompositionOut = components["schemas"]["CompositionOut"];
 export type CompositionRefreshOut = components["schemas"]["CompositionRefreshOut"];
 
-const HOLDINGS_KEY = ["holdings"] as const;
+const POSITIONS_KEY = ["positions"] as const;
+const INSTRUMENTS_KEY = ["instruments"] as const;
 const PORTFOLIO_SUMMARY_KEY = ["portfolio", "summary"] as const;
 const PORTFOLIO_HISTORY_KEY = ["portfolio", "history"] as const;
 const TRANSACTIONS_KEY = ["transactions"] as const;
 const COMPOSITION_KEY = ["composition"] as const;
 
-export function useHoldings() {
+export function usePositions() {
   return useQuery({
-    queryKey: HOLDINGS_KEY,
+    queryKey: POSITIONS_KEY,
     queryFn: async () => {
-      const { data, error } = await api.GET("/api/holdings");
+      const { data, error } = await api.GET("/api/positions");
       if (error) throw error;
       return data;
     },
   });
 }
 
-export function useCreateHolding() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: HoldingCreate) => {
-      const { data, error } = await api.POST("/api/holdings", { body });
+export function useInstruments() {
+  return useQuery({
+    queryKey: INSTRUMENTS_KEY,
+    queryFn: async () => {
+      const { data, error } = await api.GET("/api/instruments");
       if (error) throw error;
       return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
-      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
     },
   });
 }
 
-export function useUpdateHolding() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, body }: { id: number; body: HoldingUpdate }) => {
-      const { data, error } = await api.PUT("/api/holdings/{holding_id}", {
-        params: { path: { holding_id: id } },
-        body,
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
-      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
-    },
-  });
-}
-
+/** Patch instrument metadata: rename, set the pricing ticker, or
+ * include/exclude it from the portfolio. Every field is optional, so
+ * callers send only what changed. */
 export function useUpdateInstrument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, name, ticker }: { id: number; name: string; ticker?: string }) => {
+    mutationFn: async ({
+      id,
+      ...patch
+    }: {
+      id: number;
+      name?: string;
+      ticker?: string;
+      included?: boolean;
+    }) => {
       const { data, error } = await api.PUT("/api/instruments/{instrument_id}", {
         params: { path: { instrument_id: id } },
-        body: { name, ticker },
+        body: patch,
       });
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
-      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
-    },
-  });
-}
-
-export function useDeleteHolding() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: number) => {
-      const { error } = await api.DELETE("/api/holdings/{holding_id}", {
-        params: { path: { holding_id: id } },
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
-      queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
+      // Changing what is tracked moves every downstream number.
+      for (const key of [POSITIONS_KEY, INSTRUMENTS_KEY, PORTFOLIO_SUMMARY_KEY, PORTFOLIO_HISTORY_KEY, COMPOSITION_KEY]) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
     },
   });
 }
@@ -189,7 +167,7 @@ export function useRefreshPrices() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
-      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
+      queryClient.invalidateQueries({ queryKey: POSITIONS_KEY });
     },
   });
 }
@@ -215,7 +193,7 @@ export function useSetManualPrice() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PORTFOLIO_SUMMARY_KEY });
-      queryClient.invalidateQueries({ queryKey: HOLDINGS_KEY });
+      queryClient.invalidateQueries({ queryKey: POSITIONS_KEY });
     },
   });
 }

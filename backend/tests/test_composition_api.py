@@ -9,11 +9,11 @@ from sqlmodel.pool import StaticPool
 
 from app.db import get_session
 from app.main import app
-from app.models.holding import Holding
 from app.models.instrument import Instrument
 from app.models.price import PriceSnapshot, PriceSource
 from app.providers import registry
 from app.providers.base import BreakdownWeight, InstrumentRef
+from tests.helpers import buy
 
 
 class FakeCompositionProvider:
@@ -48,8 +48,8 @@ def test_refresh_then_aggregate(monkeypatch):
             s.refresh(b)
             # Equal value: 10 units @ 100 each.
             s.add_all([
-                Holding(instrument_id=a.id, quantity=10, avg_cost_price=100, cost_currency="EUR"),
-                Holding(instrument_id=b.id, quantity=10, avg_cost_price=100, cost_currency="EUR"),
+                buy(a, 10, 100.0),
+                buy(b, 10, 100.0),
                 PriceSnapshot(instrument_id=a.id, price=100, currency="EUR", source=PriceSource.manual, as_of=datetime.now(timezone.utc)),
                 PriceSnapshot(instrument_id=b.id, price=100, currency="EUR", source=PriceSource.manual, as_of=datetime.now(timezone.utc)),
             ])
@@ -86,7 +86,7 @@ def test_refresh_reports_failures(monkeypatch):
             s.add(a)
             s.commit()
             s.refresh(a)
-            s.add(Holding(instrument_id=a.id, quantity=1, avg_cost_price=100, cost_currency="EUR"))
+            s.add(buy(a, 1, 100.0))
             s.commit()
 
         # Provider returns None (fetch failed).

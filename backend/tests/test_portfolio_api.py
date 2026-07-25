@@ -1,6 +1,7 @@
-"""End-to-end coverage of GET /api/portfolio/summary: two holdings (one
-EUR, one USD-with-manual-price) valued together, FX provider mocked so
-the test never touches the network."""
+"""End-to-end coverage of GET /api/portfolio/summary: two positions (one
+EUR, one USD-with-manual-price) valued together. Positions come from the
+transaction ledger; the FX provider is mocked so the test never touches
+the network."""
 
 from datetime import datetime, timezone
 
@@ -10,11 +11,11 @@ from sqlmodel.pool import StaticPool
 
 from app.db import get_session
 from app.main import app
-from app.models.holding import Holding
 from app.models.instrument import Instrument
 from app.providers import registry
 from app.providers.base import FxRate
 from app.services import pricing_service
+from tests.helpers import buy
 
 
 class FakeFxProvider:
@@ -47,22 +48,7 @@ def test_portfolio_summary_mixed_currencies(monkeypatch):
             s.refresh(eur_instrument)
             s.refresh(usd_instrument)
 
-            s.add_all(
-                [
-                    Holding(
-                        instrument_id=eur_instrument.id,
-                        quantity=10,
-                        avg_cost_price=90.0,
-                        cost_currency="EUR",
-                    ),
-                    Holding(
-                        instrument_id=usd_instrument.id,
-                        quantity=2,
-                        avg_cost_price=100.0,
-                        cost_currency="USD",
-                    ),
-                ]
-            )
+            s.add_all([buy(eur_instrument, 10, 90.0), buy(usd_instrument, 2, 100.0)])
             s.commit()
 
             pricing_service.set_manual_price(s, eur_instrument.id, 100.0, "EUR")
@@ -76,7 +62,8 @@ def test_portfolio_summary_mixed_currencies(monkeypatch):
         assert body["base_currency"] == "EUR"
         assert len(body["positions"]) == 2
         assert body["total_value_base"] == 10 * 100.0 + 2 * 150.0 * 0.9
-        assert body["total_cost_base"] == 10 * 90.0 + 2 * 100.0 * 0.9
+        # Ledger amounts are already in the base currency (no FX applied to cost).
+        assert body["total_cost_base"] == 10 * 90.0 + 2 * 100.0
         assert set(body["currency_exposure"].keys()) == {"EUR", "USD"}
         assert all(p["exclusion_reason"] is None for p in body["positions"])
     finally:
@@ -98,9 +85,7 @@ def test_portfolio_summary_reports_missing_price():
             s.add(instrument)
             s.commit()
             s.refresh(instrument)
-            s.add(
-                Holding(instrument_id=instrument.id, quantity=1, avg_cost_price=10.0, cost_currency="EUR")
-            )
+            s.add(buy(instrument, 1, 10.0))
             s.commit()
 
         client = TestClient(app)

@@ -3,8 +3,8 @@ import { useImportTransactions, type ImportResultOut } from "../api/hooks";
 import { extractErrorMessage } from "../lib/apiError";
 
 /** Upload control for a Fineco "Movimenti Dossier Titoli" xlsx. Reports
- * how many operations were imported / skipped (instruments not in the
- * portfolio) / already present. */
+ * how many operations were imported, how many were already present, and
+ * which instruments the export introduced for the first time. */
 export function ImportTransactions() {
   const importTx = useImportTransactions();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,8 +46,8 @@ export function ImportTransactions() {
         <p className="import-result">
           Importate {result.imported} operazioni
           {result.duplicates > 0 ? `, ${result.duplicates} già presenti` : ""}
-          {result.skipped.length > 0
-            ? `. Ignorati (non in portafoglio): ${result.skipped.map((s) => s.name).join(", ")}`
+          {result.created_instruments.length > 0
+            ? `. Nuovi strumenti: ${result.created_instruments.join(", ")} — imposta il ticker in Strumenti per i prezzi automatici`
             : ""}
           .
         </p>

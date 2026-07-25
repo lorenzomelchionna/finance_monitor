@@ -1,28 +1,28 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlmodel import Session
+"""Instrument routes.
+
+There is no create/delete here by design: the broker import is the
+source of truth for what exists and what is held. The only writes are
+metadata edits — name, ticker, and the include/exclude toggle.
+"""
+
+from collections import Counter
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
 
 from app.db import get_session
 from app.models.instrument import Instrument
-from app.schemas.holding import HoldingCreate, HoldingOut, HoldingUpdate
-from app.schemas.instrument import InstrumentOut, InstrumentUpdate
+from app.models.transaction import Transaction
+from app.schemas.instrument import InstrumentOut, InstrumentPositionOut, InstrumentUpdate
 from app.services import holdings_service
+from app.services.positions_service import get_positions
 
-router = APIRouter(prefix="/api", tags=["holdings"])
-
-
-def _to_holding_out(session: Session, holding) -> HoldingOut:
-    instrument = session.get(Instrument, holding.instrument_id)
-    return HoldingOut(
-        id=holding.id,
-        instrument=InstrumentOut.model_validate(instrument),
-        quantity=holding.quantity,
-        avg_cost_price=holding.avg_cost_price,
-        cost_currency=holding.cost_currency,
-    )
+router = APIRouter(prefix="/api", tags=["instruments"])
 
 
 @router.get("/instruments", response_model=list[InstrumentOut])
 def list_instruments(session: Session = Depends(get_session)) -> list[Instrument]:
+    """Every instrument the import has ever seen, included or not."""
     return holdings_service.list_instruments(session)
 
 
@@ -39,33 +39,19 @@ def update_instrument(
     return instrument
 
 
-@router.get("/holdings", response_model=list[HoldingOut])
-def list_holdings(session: Session = Depends(get_session)) -> list[HoldingOut]:
-    return [_to_holding_out(session, h) for h in holdings_service.list_holdings(session)]
-
-
-@router.post("/holdings", response_model=HoldingOut, status_code=201)
-def create_holding(payload: HoldingCreate, session: Session = Depends(get_session)) -> HoldingOut:
-    try:
-        holding = holdings_service.create_holding(session, payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _to_holding_out(session, holding)
-
-
-@router.put("/holdings/{holding_id}", response_model=HoldingOut)
-def update_holding(
-    holding_id: int, payload: HoldingUpdate, session: Session = Depends(get_session)
-) -> HoldingOut:
-    holding = holdings_service.update_holding(session, holding_id, payload)
-    if holding is None:
-        raise HTTPException(status_code=404, detail="Holding not found")
-    return _to_holding_out(session, holding)
-
-
-@router.delete("/holdings/{holding_id}", status_code=204)
-def delete_holding(holding_id: int, session: Session = Depends(get_session)) -> Response:
-    deleted = holdings_service.delete_holding(session, holding_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Holding not found")
-    return Response(status_code=204)
+@router.get("/positions", response_model=list[InstrumentPositionOut])
+def list_positions(session: Session = Depends(get_session)) -> list[InstrumentPositionOut]:
+    """Positions derived from the transaction ledger, for the instruments
+    the user has included."""
+    counts = Counter(t.instrument_id for t in session.exec(select(Transaction)).all())
+    return [
+        InstrumentPositionOut(
+            instrument=InstrumentOut.model_validate(p.instrument),
+            quantity=p.quantity,
+            avg_cost=p.avg_cost,
+            invested=p.invested,
+            commissions=p.commissions,
+            transaction_count=counts.get(p.instrument.id, 0),
+        )
+        for p in get_positions(session)
+    ]

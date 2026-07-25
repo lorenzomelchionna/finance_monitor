@@ -1,161 +1,95 @@
-import { useState, type FormEvent } from "react";
-import {
-  useCreateHolding,
-  useDeleteHolding,
-  useHoldings,
-  useUpdateHolding,
-  useUpdateInstrument,
-} from "../api/hooks";
-import { HoldingsTable } from "../components/HoldingsTable";
-import type { components } from "../api/schema";
-import { extractErrorMessage } from "../lib/apiError";
-import { parseLocaleNumber } from "../lib/number";
+import { useInstruments, usePositions, useUpdateInstrument } from "../api/hooks";
+import { ImportTransactions } from "../components/ImportTransactions";
+import { InfoTip } from "../components/InfoTip";
+import { InstrumentRow } from "../components/InstrumentRow";
 
-type AssetClass = components["schemas"]["AssetClass"];
-
-const ASSET_CLASSES: AssetClass[] = ["etf", "stock", "bond", "cash", "other"];
-
-const emptyForm = {
-  isin: "",
-  ticker: "",
-  name: "",
-  currency: "EUR",
-  assetClass: "etf" as AssetClass,
-  quantity: "",
-  avgCostPrice: "",
-  costCurrency: "EUR",
+const TIP = {
+  included:
+    "Se attivo, lo strumento entra nel portafoglio: conta in Dashboard, Storico e Composizione. Escluderlo non cancella nulla — le sue transazioni restano.",
+  ticker:
+    "Simbolo di borsa per il recupero prezzi (es. VWCE.MI). L'export Fineco non lo contiene, quindi va indicato qui. Senza ticker i prezzi vanno inseriti a mano.",
+  quantity: "Quantità detenuta, calcolata dalle transazioni importate (acquisti meno vendite).",
+  avgCost: "Prezzo medio di carico per quota, calcolato dalle transazioni, commissioni incluse.",
+  invested: "Capitale versato per questa posizione, commissioni incluse.",
 };
 
 export function HoldingsView() {
-  const { data: holdings, isLoading, error } = useHoldings();
-  const createHolding = useCreateHolding();
-  const updateHolding = useUpdateHolding();
+  const { data: instruments, isLoading, error } = useInstruments();
+  const { data: positions } = usePositions();
   const updateInstrument = useUpdateInstrument();
-  const deleteHolding = useDeleteHolding();
 
-  const [form, setForm] = useState(emptyForm);
-  const [formError, setFormError] = useState<string | null>(null);
+  // Positions exist only for included instruments with a live quantity;
+  // index them so each row can show its derived figures.
+  const positionByInstrument = new Map(
+    (positions ?? []).map((p) => [p.instrument.id, p]),
+  );
 
-  function set<K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setFormError(null);
-
-    if (!form.isin && !form.ticker) {
-      setFormError("Serve almeno ISIN o ticker.");
-      return;
-    }
-    if (!form.name || !form.quantity || !form.avgCostPrice) {
-      setFormError("Nome, quantità e prezzo di carico sono obbligatori.");
-      return;
-    }
-
-    const quantity = parseLocaleNumber(form.quantity);
-    const avgCostPrice = parseLocaleNumber(form.avgCostPrice);
-    if (Number.isNaN(quantity) || Number.isNaN(avgCostPrice)) {
-      setFormError("Quantità e prezzo di carico devono essere numeri validi.");
-      return;
-    }
-
-    try {
-      await createHolding.mutateAsync({
-        instrument: {
-          isin: form.isin || undefined,
-          ticker: form.ticker || undefined,
-          name: form.name,
-          currency: form.currency,
-          asset_class: form.assetClass,
-          auto_price_enabled: true,
-        },
-        quantity,
-        avg_cost_price: avgCostPrice,
-        cost_currency: form.costCurrency,
-      });
-      setForm(emptyForm);
-    } catch (err) {
-      setFormError(`Creazione posizione fallita: ${extractErrorMessage(err)}`);
-    }
-  }
+  const includedCount = (instruments ?? []).filter((i) => i.included).length;
 
   return (
     <div>
       <section className="panel">
-        <h2>Aggiungi posizione</h2>
-        {formError && <p className="error-banner">{formError}</p>}
-        <form className="holding-form" onSubmit={handleSubmit}>
-          <label>
-            ISIN
-            <input value={form.isin} onChange={(e) => set("isin", e.target.value)} />
-          </label>
-          <label>
-            Ticker
-            <input value={form.ticker} onChange={(e) => set("ticker", e.target.value)} />
-          </label>
-          <label>
-            Nome
-            <input value={form.name} onChange={(e) => set("name", e.target.value)} />
-          </label>
-          <label>
-            Valuta strumento
-            <input value={form.currency} onChange={(e) => set("currency", e.target.value)} />
-          </label>
-          <label>
-            Asset class
-            <select
-              value={form.assetClass}
-              onChange={(e) => set("assetClass", e.target.value as AssetClass)}
-            >
-              {ASSET_CLASSES.map((ac) => (
-                <option key={ac} value={ac}>
-                  {ac}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Quantità
-            <input
-              type="text"
-              inputMode="decimal"
-              value={form.quantity}
-              onChange={(e) => set("quantity", e.target.value)}
-            />
-          </label>
-          <label>
-            Prezzo di carico
-            <input
-              type="text"
-              inputMode="decimal"
-              value={form.avgCostPrice}
-              onChange={(e) => set("avgCostPrice", e.target.value)}
-            />
-          </label>
-          <label>
-            Valuta carico
-            <input value={form.costCurrency} onChange={(e) => set("costCurrency", e.target.value)} />
-          </label>
-          <button type="submit" disabled={createHolding.isPending}>
-            {createHolding.isPending ? "Aggiungo…" : "Aggiungi"}
-          </button>
-        </form>
+        <h2>Strumenti</h2>
+        <p className="placeholder">
+          L'export Fineco è la fonte di verità: gli strumenti e le quantità vengono dalle
+          transazioni importate, non si inseriscono a mano. Qui scegli quali contano nel
+          portafoglio e indichi il ticker per il recupero prezzi.
+        </p>
+        <ImportTransactions />
       </section>
 
       <section className="panel">
-        <h2>Posizioni</h2>
+        <div className="dashboard-header">
+          <h2>Portafoglio</h2>
+          <span className="placeholder">
+            {instruments ? `${includedCount} di ${instruments.length} inclusi` : ""}
+          </span>
+        </div>
+
         {isLoading && <p className="placeholder">Caricamento…</p>}
-        {error && <p className="error-banner">Errore nel caricamento delle posizioni.</p>}
-        {holdings && (
-          <HoldingsTable
-            holdings={holdings}
-            onUpdateQuantity={(id, quantity) => updateHolding.mutate({ id, body: { quantity } })}
-            onUpdateInstrument={(instrumentId, updates) =>
-              updateInstrument.mutate({ id: instrumentId, ...updates })
-            }
-            onDelete={(id) => deleteHolding.mutate(id)}
-          />
+        {error && <p className="error-banner">Errore nel caricamento degli strumenti.</p>}
+
+        {instruments && instruments.length === 0 && (
+          <p className="placeholder">
+            Nessuno strumento. Importa l'export "Movimenti Dossier Titoli" di Fineco qui sopra per
+            popolare il portafoglio.
+          </p>
+        )}
+
+        {instruments && instruments.length > 0 && (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>
+                  Includi <InfoTip text={TIP.included} />
+                </th>
+                <th>Strumento</th>
+                <th>ISIN</th>
+                <th>
+                  Ticker <InfoTip text={TIP.ticker} />
+                </th>
+                <th className="num">
+                  Quantità <InfoTip text={TIP.quantity} />
+                </th>
+                <th className="num">
+                  Prezzo medio <InfoTip text={TIP.avgCost} />
+                </th>
+                <th className="num">
+                  Investito <InfoTip text={TIP.invested} />
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {instruments.map((instrument) => (
+                <InstrumentRow
+                  key={instrument.id}
+                  instrument={instrument}
+                  position={positionByInstrument.get(instrument.id) ?? null}
+                  onPatch={(patch) => updateInstrument.mutate({ id: instrument.id, ...patch })}
+                />
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
     </div>

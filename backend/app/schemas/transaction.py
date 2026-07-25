@@ -23,12 +23,8 @@ class TransactionOut(BaseModel):
     commissions: float
 
 
-class SkippedInstrument(BaseModel):
-    isin: str
-    name: str
-
-
 class ImportResultOut(BaseModel):
     imported: int
     duplicates: int
-    skipped: list[SkippedInstrument]
+    # Instruments the export introduced that the app hadn't seen before.
+    created_instruments: list[str]

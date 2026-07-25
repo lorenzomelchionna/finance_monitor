@@ -1,12 +1,19 @@
-"""End-to-end coverage of /api/holdings: create-with-inline-instrument,
-de-dup on re-add via isin/ticker, update, delete, 404s."""
+"""Coverage of the instrument routes.
 
+There is no create/delete: instruments come from the broker import and
+positions are derived from the ledger. What these tests guard is the
+metadata the export can't supply (name, ticker) and the include/exclude
+toggle that decides what counts towards the portfolio.
+"""
+
+from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
-from fastapi.testclient import TestClient
 
 from app.db import get_session
 from app.main import app
+from app.models.instrument import Instrument
+from tests.helpers import buy
 
 
 def _client_with_fresh_db():
@@ -18,174 +25,114 @@ def _client_with_fresh_db():
             yield s
 
     app.dependency_overrides[get_session] = _get_session
-    return TestClient(app)
+    return TestClient(app), engine
 
 
-def test_create_holding_with_inline_instrument():
-    client = _client_with_fresh_db()
+def _seed(engine, **kwargs) -> int:
+    """Create one instrument with a buy, return its id."""
+    defaults = dict(isin="IE00BK5BQT80", ticker="VWCE", name="Old Name", currency="EUR")
+    defaults.update(kwargs)
+    with Session(engine) as s:
+        instrument = Instrument(**defaults)
+        s.add(instrument)
+        s.commit()
+        s.refresh(instrument)
+        s.add(buy(instrument, 10, 100.0))
+        s.commit()
+        return instrument.id
+
+
+def test_positions_are_derived_from_the_ledger():
+    client, engine = _client_with_fresh_db()
     try:
-        resp = client.post(
-            "/api/holdings",
-            json={
-                "instrument": {
-                    "isin": "IE00BK5BQT80",
-                    "ticker": "VWCE.DE",
-                    "name": "Vanguard FTSE All-World UCITS ETF",
-                    "currency": "EUR",
-                },
-                "quantity": 10,
-                "avg_cost_price": 95.5,
-                "cost_currency": "EUR",
-            },
-        )
-        assert resp.status_code == 201
-        body = resp.json()
-        assert body["instrument"]["ticker"] == "VWCE.DE"
-        assert body["quantity"] == 10
-
-        resp = client.get("/api/holdings")
-        assert len(resp.json()) == 1
-        resp = client.get("/api/instruments")
-        assert len(resp.json()) == 1
-    finally:
-        app.dependency_overrides.clear()
-
-
-def test_create_holding_reuses_existing_instrument_by_isin():
-    client = _client_with_fresh_db()
-    try:
-        payload = {
-            "instrument": {
-                "isin": "IE00B4L5Y983",
-                "name": "iShares Core MSCI World",
-                "currency": "EUR",
-            },
-            "quantity": 5,
-            "avg_cost_price": 70.0,
-            "cost_currency": "EUR",
-        }
-        first = client.post("/api/holdings", json=payload).json()
-        second = client.post("/api/holdings", json=payload).json()
-
-        assert first["instrument"]["id"] == second["instrument"]["id"]
-        assert len(client.get("/api/instruments").json()) == 1
-        assert len(client.get("/api/holdings").json()) == 2
-    finally:
-        app.dependency_overrides.clear()
-
-
-def test_create_holding_requires_instrument_id_or_full_spec():
-    client = _client_with_fresh_db()
-    try:
-        resp = client.post(
-            "/api/holdings",
-            json={
-                "instrument": {"name": "Missing ticker/isin", "currency": "EUR"},
-                "quantity": 1,
-                "avg_cost_price": 1,
-                "cost_currency": "EUR",
-            },
-        )
-        assert resp.status_code == 422
-    finally:
-        app.dependency_overrides.clear()
-
-
-def test_update_and_delete_holding():
-    client = _client_with_fresh_db()
-    try:
-        created = client.post(
-            "/api/holdings",
-            json={
-                "instrument": {"ticker": "AAPL", "name": "Apple", "currency": "USD"},
-                "quantity": 2,
-                "avg_cost_price": 150.0,
-                "cost_currency": "USD",
-            },
-        ).json()
-        holding_id = created["id"]
-
-        resp = client.put(f"/api/holdings/{holding_id}", json={"quantity": 3})
-        assert resp.status_code == 200
-        assert resp.json()["quantity"] == 3
-
-        resp = client.delete(f"/api/holdings/{holding_id}")
-        assert resp.status_code == 204
-
-        resp = client.get("/api/holdings")
-        assert resp.json() == []
-
-        resp = client.delete(f"/api/holdings/{holding_id}")
-        assert resp.status_code == 404
+        _seed(engine)
+        positions = client.get("/api/positions").json()
+        assert len(positions) == 1
+        assert positions[0]["quantity"] == 10
+        assert positions[0]["avg_cost"] == 100.0
+        assert positions[0]["transaction_count"] == 1
     finally:
         app.dependency_overrides.clear()
 
 
 def test_rename_instrument():
-    client = _client_with_fresh_db()
+    client, engine = _client_with_fresh_db()
     try:
-        created = client.post(
-            "/api/holdings",
-            json={
-                "instrument": {"ticker": "VWCE", "name": "Old Name", "currency": "EUR"},
-                "quantity": 1,
-                "avg_cost_price": 100.0,
-                "cost_currency": "EUR",
-            },
-        ).json()
-        instrument_id = created["instrument"]["id"]
+        instrument_id = _seed(engine)
 
         resp = client.put(f"/api/instruments/{instrument_id}", json={"name": "New Name"})
         assert resp.status_code == 200
         assert resp.json()["name"] == "New Name"
 
-        resp = client.get("/api/holdings")
-        assert resp.json()[0]["instrument"]["name"] == "New Name"
+        assert client.get("/api/positions").json()[0]["instrument"]["name"] == "New Name"
 
-        resp = client.put(f"/api/instruments/{instrument_id}", json={"name": ""})
-        assert resp.status_code == 422
-
-        resp = client.put("/api/instruments/999999", json={"name": "Nope"})
-        assert resp.status_code == 404
+        assert client.put(f"/api/instruments/{instrument_id}", json={"name": ""}).status_code == 422
+        assert client.put("/api/instruments/999999", json={"name": "Nope"}).status_code == 404
     finally:
         app.dependency_overrides.clear()
 
 
-def test_update_instrument_ticker():
-    client = _client_with_fresh_db()
+def test_setting_a_ticker_enables_automatic_pricing():
+    client, engine = _client_with_fresh_db()
     try:
-        created = client.post(
-            "/api/holdings",
-            json={
-                "instrument": {"ticker": "MEUD", "name": "Amundi MSCI Europe", "currency": "EUR"},
-                "quantity": 1,
-                "avg_cost_price": 100.0,
-                "cost_currency": "EUR",
-            },
-        ).json()
-        other = client.post(
-            "/api/holdings",
-            json={
-                "instrument": {"ticker": "EIMI", "name": "iShares EM", "currency": "EUR"},
-                "quantity": 1,
-                "avg_cost_price": 50.0,
-                "cost_currency": "EUR",
-            },
-        ).json()
-        instrument_id = created["instrument"]["id"]
+        # Imported instruments start without a ticker, so auto-pricing is off.
+        instrument_id = _seed(engine, ticker=None, auto_price_enabled=False)
 
-        resp = client.put(
-            f"/api/instruments/{instrument_id}",
-            json={"name": "Amundi MSCI Europe", "ticker": "MEUD.MI"},
-        )
+        resp = client.put(f"/api/instruments/{instrument_id}", json={"ticker": "VWCE.MI"})
         assert resp.status_code == 200
-        assert resp.json()["ticker"] == "MEUD.MI"
+        assert resp.json()["ticker"] == "VWCE.MI"
+        assert resp.json()["auto_price_enabled"] is True
 
-        # Colliding with another instrument's ticker is rejected, not silently swapped.
-        resp = client.put(
-            f"/api/instruments/{instrument_id}",
-            json={"name": "Amundi MSCI Europe", "ticker": other["instrument"]["ticker"]},
-        )
+        # Clearing it turns pricing back off rather than failing on every refresh.
+        resp = client.put(f"/api/instruments/{instrument_id}", json={"ticker": ""})
+        assert resp.json()["ticker"] is None
+        assert resp.json()["auto_price_enabled"] is False
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_ticker_collision_is_rejected():
+    client, engine = _client_with_fresh_db()
+    try:
+        first = _seed(engine, isin="AAA", ticker="MEUD", name="Amundi")
+        _seed(engine, isin="BBB", ticker="EIMI", name="iShares")
+
+        resp = client.put(f"/api/instruments/{first}", json={"ticker": "EIMI"})
         assert resp.status_code == 400
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_excluding_an_instrument_drops_it_from_positions():
+    client, engine = _client_with_fresh_db()
+    try:
+        instrument_id = _seed(engine)
+        assert len(client.get("/api/positions").json()) == 1
+
+        resp = client.put(f"/api/instruments/{instrument_id}", json={"included": False})
+        assert resp.status_code == 200
+        assert resp.json()["included"] is False
+
+        # Excluded: gone from positions, but still listed and still owns
+        # its transaction history.
+        assert client.get("/api/positions").json() == []
+        assert len(client.get("/api/instruments").json()) == 1
+        assert len(client.get("/api/transactions").json()) == 1
+
+        client.put(f"/api/instruments/{instrument_id}", json={"included": True})
+        assert len(client.get("/api/positions").json()) == 1
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_excluded_instrument_leaves_the_portfolio_summary():
+    client, engine = _client_with_fresh_db()
+    try:
+        instrument_id = _seed(engine)
+        client.put(f"/api/instruments/{instrument_id}", json={"included": False})
+
+        summary = client.get("/api/portfolio/summary").json()
+        assert summary["positions"] == []
+        assert summary["total_cost_base"] == 0.0
     finally:
         app.dependency_overrides.clear()

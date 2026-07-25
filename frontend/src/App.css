@@ -319,6 +319,18 @@
   opacity: 0.7;
 }
 
+/* Excluded instruments stay listed (their history is intact) but read as
+   inactive. */
+.row-excluded {
+  opacity: 0.45;
+}
+
+.warn-hint {
+  color: #b7791f;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 /* Hoverable info tooltip */
 .infotip {
   position: relative;

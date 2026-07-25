@@ -4,8 +4,12 @@ from app.models.instrument import AssetClass
 
 
 class InstrumentUpdate(BaseModel):
-    name: str = Field(min_length=1)
+    """Every field optional: the UI patches one thing at a time (rename,
+    set a ticker, include/exclude)."""
+
+    name: str | None = Field(default=None, min_length=1)
     ticker: str | None = None
+    included: bool | None = None
 
 
 class InstrumentOut(BaseModel):
@@ -18,3 +22,15 @@ class InstrumentOut(BaseModel):
     currency: str
     asset_class: AssetClass
     auto_price_enabled: bool
+    included: bool
+
+
+class InstrumentPositionOut(BaseModel):
+    """An instrument plus the position derived from its transactions."""
+
+    instrument: InstrumentOut
+    quantity: float
+    avg_cost: float
+    invested: float
+    commissions: float
+    transaction_count: int

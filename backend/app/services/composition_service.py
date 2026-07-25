@@ -15,16 +15,14 @@ from sqlmodel import Session, select
 from app.config import get_settings
 from app.domain.composition import aggregate_composition
 from app.models.breakdown import BreakdownDimension, BreakdownSource, CompositionBreakdown
-from app.models.holding import Holding
 from app.models.instrument import Instrument
 from app.providers.registry import resolve_composition
 from app.services.portfolio_service import get_portfolio_summary
+from app.services.positions_service import get_positions
 
 
 def _held_instruments(session: Session) -> dict[int, Instrument]:
-    holdings = session.exec(select(Holding)).all()
-    ids = {h.instrument_id for h in holdings}
-    return {i.id: i for i in session.exec(select(Instrument)).all() if i.id in ids}
+    return {p.instrument.id: p.instrument for p in get_positions(session)}
 
 
 def refresh_composition(session: Session) -> dict:

@@ -11,7 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Instruments */
+        /**
+         * List Instruments
+         * @description Every instrument the import has ever seen, included or not.
+         */
         get: operations["list_instruments_api_instruments_get"];
         put?: never;
         post?: never;
@@ -38,37 +41,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/holdings": {
+    "/api/positions": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Holdings */
-        get: operations["list_holdings_api_holdings_get"];
+        /**
+         * List Positions
+         * @description Positions derived from the transaction ledger, for the instruments
+         *     the user has included.
+         */
+        get: operations["list_positions_api_positions_get"];
         put?: never;
-        /** Create Holding */
-        post: operations["create_holding_api_holdings_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/holdings/{holding_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update Holding */
-        put: operations["update_holding_api_holdings__holding_id__put"];
         post?: never;
-        /** Delete Holding */
-        delete: operations["delete_holding_api_holdings__holding_id__delete"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -314,45 +302,14 @@ export interface components {
             /** Close */
             close: number;
         };
-        /** HoldingCreate */
-        HoldingCreate: {
-            instrument: components["schemas"]["InstrumentInput"];
-            /** Quantity */
-            quantity: number;
-            /** Avg Cost Price */
-            avg_cost_price: number;
-            /** Cost Currency */
-            cost_currency: string;
-        };
-        /** HoldingOut */
-        HoldingOut: {
-            /** Id */
-            id: number;
-            instrument: components["schemas"]["InstrumentOut"];
-            /** Quantity */
-            quantity: number;
-            /** Avg Cost Price */
-            avg_cost_price: number;
-            /** Cost Currency */
-            cost_currency: string;
-        };
-        /** HoldingUpdate */
-        HoldingUpdate: {
-            /** Quantity */
-            quantity?: number | null;
-            /** Avg Cost Price */
-            avg_cost_price?: number | null;
-            /** Cost Currency */
-            cost_currency?: string | null;
-        };
         /** ImportResultOut */
         ImportResultOut: {
             /** Imported */
             imported: number;
             /** Duplicates */
             duplicates: number;
-            /** Skipped */
-            skipped: components["schemas"]["SkippedInstrument"][];
+            /** Created Instruments */
+            created_instruments: string[];
         };
         /** InstrumentCompositionOut */
         InstrumentCompositionOut: {
@@ -380,33 +337,6 @@ export interface components {
             /** Points */
             points: components["schemas"]["HistoryPointOut"][];
         };
-        /**
-         * InstrumentInput
-         * @description Either point at an existing instrument by id, or describe a new
-         *     one to create inline — matches the "crea Instrument inline se serve"
-         *     requirement for holding creation. Matching for de-dup happens in
-         *     holdings_service (by isin, then ticker) so re-adding the same
-         *     instrument reuses the existing row instead of duplicating it.
-         */
-        InstrumentInput: {
-            /** Instrument Id */
-            instrument_id?: number | null;
-            /** Isin */
-            isin?: string | null;
-            /** Ticker */
-            ticker?: string | null;
-            /** Name */
-            name?: string | null;
-            /** Currency */
-            currency?: string | null;
-            /** @default etf */
-            asset_class: components["schemas"]["AssetClass"];
-            /**
-             * Auto Price Enabled
-             * @default true
-             */
-            auto_price_enabled: boolean;
-        };
         /** InstrumentOut */
         InstrumentOut: {
             /** Id */
@@ -422,13 +352,38 @@ export interface components {
             asset_class: components["schemas"]["AssetClass"];
             /** Auto Price Enabled */
             auto_price_enabled: boolean;
+            /** Included */
+            included: boolean;
         };
-        /** InstrumentUpdate */
+        /**
+         * InstrumentPositionOut
+         * @description An instrument plus the position derived from its transactions.
+         */
+        InstrumentPositionOut: {
+            instrument: components["schemas"]["InstrumentOut"];
+            /** Quantity */
+            quantity: number;
+            /** Avg Cost */
+            avg_cost: number;
+            /** Invested */
+            invested: number;
+            /** Commissions */
+            commissions: number;
+            /** Transaction Count */
+            transaction_count: number;
+        };
+        /**
+         * InstrumentUpdate
+         * @description Every field optional: the UI patches one thing at a time (rename,
+         *     set a ticker, include/exclude).
+         */
         InstrumentUpdate: {
             /** Name */
-            name: string;
+            name?: string | null;
             /** Ticker */
             ticker?: string | null;
+            /** Included */
+            included?: boolean | null;
         };
         /** ManualPriceIn */
         ManualPriceIn: {
@@ -579,13 +534,6 @@ export interface components {
             /** Currency */
             currency?: string | null;
         };
-        /** SkippedInstrument */
-        SkippedInstrument: {
-            /** Isin */
-            isin: string;
-            /** Name */
-            name: string;
-        };
         /** TransactionOut */
         TransactionOut: {
             /** Id */
@@ -706,7 +654,7 @@ export interface operations {
             };
         };
     };
-    list_holdings_api_holdings_get: {
+    list_positions_api_positions_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -721,104 +669,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HoldingOut"][];
-                };
-            };
-        };
-    };
-    create_holding_api_holdings_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["HoldingCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HoldingOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_holding_api_holdings__holding_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                holding_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["HoldingUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HoldingOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_holding_api_holdings__holding_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                holding_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["InstrumentPositionOut"][];
                 };
             };
         };

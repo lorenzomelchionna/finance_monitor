@@ -70,7 +70,9 @@ def _client_with_fresh_db():
     return TestClient(app), engine
 
 
-def test_import_links_held_only_and_is_idempotent():
+def test_import_creates_instruments_and_is_idempotent():
+    """The export is the source of truth: an ISIN it mentions becomes an
+    instrument, whether or not the app knew about it before."""
     client, engine = _client_with_fresh_db()
     try:
         with Session(engine) as s:
@@ -79,23 +81,36 @@ def test_import_links_held_only_and_is_idempotent():
 
         data = _make_xlsx([
             _row("10/07/2026", "IE00BKM4GZ66", "ISHS MSCI EM", 7, 47.78, 334.46),
-            _row("10/07/2026", "IE00B8XB7377", "FINEX GOLD", 11, 2.7, 30.09),  # not held
+            _row("10/07/2026", "IE00B8XB7377", "FINEX GOLD", 11, 2.7, 30.09),  # unknown so far
         ])
 
         resp = client.post("/api/transactions/import", files={"file": ("f.xlsx", data)})
         assert resp.status_code == 200
         body = resp.json()
-        assert body["imported"] == 1
-        assert len(body["skipped"]) == 1
-        assert body["skipped"][0]["isin"] == "IE00B8XB7377"
+        assert body["imported"] == 2
+        assert body["created_instruments"] == ["FINEX GOLD"]
 
-        # Re-import: idempotent.
+        # The new instrument is tracked but has no ticker, so automatic
+        # pricing stays off until the user supplies one.
+        instruments = {i["isin"]: i for i in client.get("/api/instruments").json()}
+        assert set(instruments) == {"IE00BKM4GZ66", "IE00B8XB7377"}
+        created = instruments["IE00B8XB7377"]
+        assert created["included"] is True
+        assert created["ticker"] is None
+        assert created["auto_price_enabled"] is False
+
+        # Both now hold a derived position.
+        assert len(client.get("/api/positions").json()) == 2
+
+        # Re-import: idempotent, and no duplicate instrument.
         resp2 = client.post("/api/transactions/import", files={"file": ("f.xlsx", data)})
         assert resp2.json()["imported"] == 0
-        assert resp2.json()["duplicates"] == 1
+        assert resp2.json()["duplicates"] == 2
+        assert resp2.json()["created_instruments"] == []
+        assert len(client.get("/api/instruments").json()) == 2
 
         with Session(engine) as s:
-            assert len(s.exec(select(Transaction)).all()) == 1
+            assert len(s.exec(select(Transaction)).all()) == 2
     finally:
         app.dependency_overrides.clear()
 

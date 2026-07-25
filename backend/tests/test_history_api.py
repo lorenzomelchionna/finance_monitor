@@ -1,16 +1,18 @@
 """End-to-end coverage of GET /api/portfolio/history with a stubbed
 history provider (no network)."""
 
+from datetime import date
+
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
 from app.db import get_session
 from app.main import app
-from app.models.holding import Holding
 from app.models.instrument import Instrument
 from app.providers import registry
 from app.providers.base import HistoryPoint, InstrumentRef
+from tests.helpers import buy
 
 
 class FakeHistoryProvider:
@@ -44,8 +46,8 @@ def test_portfolio_history_aggregates_and_reports_series(monkeypatch):
             s.refresh(a)
             s.refresh(b)
             s.add_all([
-                Holding(instrument_id=a.id, quantity=2, avg_cost_price=1, cost_currency="EUR"),
-                Holding(instrument_id=b.id, quantity=1, avg_cost_price=1, cost_currency="EUR"),
+                buy(a, 2, 1.0, on=date(2020, 1, 1)),
+                buy(b, 1, 1.0, on=date(2020, 1, 1)),
             ])
             s.commit()
 
@@ -82,9 +84,9 @@ def test_portfolio_history_warns_on_unresolved_and_non_base_currency(monkeypatch
             for i in (eur, usd, broken):
                 s.refresh(i)
             s.add_all([
-                Holding(instrument_id=eur.id, quantity=1, avg_cost_price=1, cost_currency="EUR"),
-                Holding(instrument_id=usd.id, quantity=1, avg_cost_price=1, cost_currency="USD"),
-                Holding(instrument_id=broken.id, quantity=1, avg_cost_price=1, cost_currency="EUR"),
+                buy(eur, 1, 1.0, on=date(2020, 1, 1)),
+                buy(usd, 1, 1.0, on=date(2020, 1, 1)),
+                buy(broken, 1, 1.0, on=date(2020, 1, 1)),
             ])
             s.commit()
 

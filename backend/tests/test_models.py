@@ -3,13 +3,15 @@ verify relationships resolve. Not exhaustive constraint testing — just
 confirms the schema is usable end-to-end from Python.
 """
 
+from datetime import date
+
 from app.models.breakdown import BreakdownDimension, CompositionBreakdown
-from app.models.holding import Holding
 from app.models.instrument import AssetClass, Instrument
 from app.models.price import PriceSnapshot, PriceSource
+from app.models.transaction import Transaction, TransactionSign
 
 
-def test_insert_instrument_holding_price_and_breakdown(session):
+def test_insert_instrument_transaction_price_and_breakdown(session):
     instrument = Instrument(
         isin="IE00BK5BQT80",
         ticker="VWCE.DE",
@@ -22,11 +24,17 @@ def test_insert_instrument_holding_price_and_breakdown(session):
     session.refresh(instrument)
     assert instrument.id is not None
 
-    holding = Holding(
+    transaction = Transaction(
         instrument_id=instrument.id,
+        isin=instrument.isin,
+        name=instrument.name,
+        trade_date=date(2025, 8, 18),
+        sign=TransactionSign.buy,
         quantity=10,
-        avg_cost_price=95.5,
-        cost_currency="EUR",
+        currency="EUR",
+        price=95.5,
+        gross_amount=955.0,
+        dedup_key="test-key-1",
     )
     price = PriceSnapshot(
         instrument_id=instrument.id,
@@ -40,13 +48,16 @@ def test_insert_instrument_holding_price_and_breakdown(session):
         key="US",
         weight=0.62,
     )
-    session.add_all([holding, price, breakdown])
+    session.add_all([transaction, price, breakdown])
     session.commit()
 
-    session.refresh(holding)
+    session.refresh(transaction)
     session.refresh(price)
     session.refresh(breakdown)
 
-    assert holding.instrument_id == instrument.id
+    assert transaction.instrument_id == instrument.id
+    assert transaction.sign == TransactionSign.buy
     assert price.source == PriceSource.manual
     assert breakdown.weight == 0.62
+    # New instruments are counted towards the portfolio unless excluded.
+    assert instrument.included is True
