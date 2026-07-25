@@ -23,7 +23,7 @@ export function ImportTransactions() {
   }
 
   return (
-    <div className="import-box">
+    <div className="row">
       <div className="import-row">
         <input
           ref={inputRef}
@@ -36,14 +36,14 @@ export function ImportTransactions() {
             e.target.value = "";
           }}
         />
-        <button type="button" onClick={() => inputRef.current?.click()} disabled={importTx.isPending}>
-          {importTx.isPending ? "Importo…" : "📥 Importa movimenti Fineco (.xlsx)"}
+        <button type="button" className="btn" onClick={() => inputRef.current?.click()} disabled={importTx.isPending}>
+          {importTx.isPending ? "Importo…" : "Importa movimenti Fineco (.xlsx)"}
         </button>
       </div>
 
       {error && <p className="error-banner">Import fallito: {error}</p>}
       {result && (
-        <p className="import-result">
+        <p className="placeholder">
           Importate {result.imported} operazioni
           {result.duplicates > 0 ? `, ${result.duplicates} già presenti` : ""}
           {result.created_instruments.length > 0

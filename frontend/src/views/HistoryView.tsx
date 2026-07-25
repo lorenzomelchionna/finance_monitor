@@ -91,8 +91,8 @@ export function HistoryView() {
   return (
     <div>
       <section className="panel">
-        <div className="dashboard-header">
-          <h2>Storico — {selectedName}</h2>
+        <div className="panel-header">
+          <div className="panel-title"><h2>Storico — {selectedName}</h2></div>
           <span className="placeholder">
             {points.length > 0
               ? `${new Date(points[0].date).toLocaleDateString("it-IT")} → ${new Date(
@@ -102,7 +102,7 @@ export function HistoryView() {
           </span>
         </div>
 
-        <div className="history-controls">
+        <div className="controls-row">
           <div className="control-group">
             <span className="control-label">Orizzonte</span>
             <div className="segmented">
@@ -172,7 +172,7 @@ export function HistoryView() {
       <section className="panel">
         <h2>Vista</h2>
         <ImportTransactions />
-        <div className="history-selector">
+        <div className="chip-row">
           <button
             type="button"
             className={selection === "portfolio" ? "chip active" : "chip"}
@@ -194,7 +194,7 @@ export function HistoryView() {
         </div>
 
         {data.warnings.length > 0 && (
-          <ul className="history-warnings">
+          <ul className="stack">
             {data.warnings.map((w, i) => (
               <li key={i}>{w}</li>
             ))}

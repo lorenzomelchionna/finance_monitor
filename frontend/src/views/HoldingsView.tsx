@@ -42,7 +42,7 @@ export function HoldingsView() {
       </section>
 
       <section className="panel">
-        <div className="dashboard-header">
+        <div className="panel-header">
           <h2>Portafoglio</h2>
           <span className="placeholder">
             {instruments ? `${includedCount} di ${instruments.length} inclusi` : ""}
@@ -50,22 +50,25 @@ export function HoldingsView() {
         </div>
 
         {missingTicker > 0 && (
-          <div className="import-box">
-            <p className="placeholder">
-              {missingTicker} strumenti senza ticker: i prezzi non si aggiornano da soli. Provo a
-              ricavarlo dall'ISIN.
-            </p>
+          <div className="notice">
+            <span aria-hidden="true">&#9888;</span>
+            <span>
+              {missingTicker === 1
+                ? "1 strumento non ha un ticker"
+                : `${missingTicker} strumenti non hanno un ticker`}
+              : i loro prezzi non si aggiornano da soli.
+            </span>
             <button
               type="button"
               onClick={() => resolveTickers.mutate()}
               disabled={resolveTickers.isPending}
             >
-              {resolveTickers.isPending ? "Cerco…" : "🔎 Trova ticker automaticamente"}
+              {resolveTickers.isPending ? "Cerco…" : "Trova ticker dall’ISIN"}
             </button>
           </div>
         )}
         {resolveTickers.data && (
-          <p className="import-result">
+          <p className="placeholder">
             {Object.keys(resolveTickers.data.resolved).length > 0
               ? `Trovati: ${Object.entries(resolveTickers.data.resolved)
                   .map(([name, t]) => `${name} → ${t}`)

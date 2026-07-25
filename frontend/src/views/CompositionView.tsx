@@ -25,9 +25,9 @@ export function CompositionView() {
   return (
     <div>
       <section className="panel">
-        <div className="dashboard-header">
-          <h2>Composizione (look-through) — {selectedName}</h2>
-          <button type="button" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
+        <div className="panel-header">
+          <div className="panel-title"><h2>Composizione (look-through) — {selectedName}</h2></div>
+          <button type="button" className="btn" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
             {refresh.isPending ? "Aggiorno…" : "Aggiorna composizione"}
           </button>
         </div>
@@ -43,7 +43,7 @@ export function CompositionView() {
         )}
 
         {data && (
-          <div className="history-selector">
+          <div className="chip-row">
             <button
               type="button"
               className={selection === "portfolio" ? "chip active" : "chip"}
@@ -79,8 +79,8 @@ export function CompositionView() {
           const missing = data.missing[dim] ?? [];
           return (
             <section className="panel" key={dim}>
-              <div className="dashboard-header">
-                <h2>{DIM_LABEL[dim]}</h2>
+              <div className="panel-header">
+                <div className="panel-title"><h2>{DIM_LABEL[dim]}</h2></div>
                 {isPortfolio && (
                   <span className="placeholder">copertura {(coverage * 100).toFixed(0)}%</span>
                 )}

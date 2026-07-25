@@ -1,310 +1,241 @@
+/* Component styles. Layout primitives first, then the pieces that build
+   every view: panels, metrics, tables, forms, controls, states. */
+
+/* ---------- app shell ---------- */
+
 .app {
-  text-align: left;
   display: flex;
   flex-direction: column;
   flex: 1;
+}
+
+/* Header and nav stay put while long tables scroll. */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s3) var(--s5) 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.app-brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+
+.app-brand-mark {
+  font-size: 16px;
+}
+
+.app-meta {
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
 }
 
 .app-nav {
   display: flex;
-  gap: 4px;
-  padding: 12px 24px 0;
-  border-bottom: 1px solid var(--border);
+  gap: var(--s1);
+  padding: var(--s2) var(--s5) 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .app-nav button {
-  font: inherit;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  color: var(--text);
-  padding: 8px 12px 10px;
+  color: var(--text-muted);
+  padding: var(--s2) var(--s3) var(--s3);
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.12s ease;
+}
+
+.app-nav button:hover {
+  color: var(--text);
 }
 
 .app-nav button.active {
-  color: var(--text-h);
+  color: var(--text);
   border-bottom-color: var(--accent);
 }
 
 .app-main {
-  padding: 24px;
   flex: 1;
+  padding: var(--s5);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
 }
+
+/* ---------- panel ---------- */
 
 .panel {
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 20px;
+  border-radius: var(--radius);
+  padding: var(--s5);
+  margin-bottom: var(--s4);
 }
 
-.panel h2 {
-  margin-bottom: 12px;
-  text-align: left;
-}
-
-.holding-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-  align-items: end;
-}
-
-.holding-form label {
+.panel-header {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  margin-bottom: var(--s4);
+}
+
+.panel-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+}
+
+.panel-note {
   font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: var(--s4);
+  max-width: 68ch;
+}
+
+/* ---------- metrics ---------- */
+
+/* One hero figure (the number the user actually opens the app for)
+   above a row of supporting ones — the old layout gave all five equal
+   weight, so nothing read as the headline. */
+.metric-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s5);
+  flex-wrap: wrap;
+  padding-bottom: var(--s5);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--s5);
+}
+
+.metric-hero-value {
+  font-size: 40px;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
-.holding-form input,
-.holding-form select {
-  font: inherit;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text-h);
+.metric-hero-delta {
+  font-size: 15px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
 }
 
-.holding-form button,
-.data-table button {
-  font: inherit;
-  padding: 6px 14px;
-  border: 1px solid var(--accent-border);
-  border-radius: 4px;
-  background: var(--accent-bg);
-  color: var(--text-h);
-  cursor: pointer;
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--s4);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+.metric-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  /* Labels wrap to two lines on narrow columns; a fixed min-height keeps
+     the values on a shared baseline instead of stair-stepping. */
+  min-height: 2.4em;
+}
+
+.metric-value {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.pos {
+  color: var(--pos);
+}
+.neg {
+  color: var(--neg);
+}
+
+/* ---------- table ---------- */
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--s5));
+  padding: 0 var(--s5);
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-  text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
 
-.data-table input[type="text"] {
-  width: 90px;
-  font: inherit;
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text-h);
-}
-
-.data-table input.instrument-name-input {
-  width: 100%;
-  min-width: 220px;
-}
-
-.error-banner {
-  color: #d33;
-  margin-bottom: 12px;
-}
-
-.placeholder {
-  color: var(--text);
-  font-style: italic;
-}
-
-.dashboard-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.dashboard-header h2 {
-  margin: 0;
-}
-
-.summary-cards {
-  display: flex;
-  gap: 16px;
-}
-
-.summary-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.summary-label {
-  font-size: 13px;
-  color: var(--text);
-}
-
-.summary-value {
-  font-size: 24px;
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-.pnl-positive {
-  color: #2ca86b;
-}
-
-.pnl-negative {
-  color: #d33;
-}
-
-.status-badge {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: var(--code-bg);
-  color: var(--text);
-}
-
-.status-badge.status-ok {
-  color: #2ca86b;
-}
-
-.status-badge.status-manual {
-  color: #d9a441;
-}
-
-.status-badge.status-missing {
-  color: #d33;
-}
-
-.manual-price-input {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.manual-price-input input {
-  width: 80px;
-  font: inherit;
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text-h);
-}
-
-/* History view controls */
-.history-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  margin-bottom: 16px;
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.control-label {
-  font-size: 12px;
-  color: var(--text);
+.data-table th {
+  text-align: left;
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
-.segmented {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  width: fit-content;
-}
-
-.segmented button {
-  font: inherit;
-  background: var(--bg);
+.data-table td {
+  padding: var(--s3);
+  border-bottom: 1px solid var(--border);
   color: var(--text);
-  border: none;
-  border-right: 1px solid var(--border);
-  padding: 6px 12px;
-  cursor: pointer;
+  vertical-align: middle;
 }
 
-.segmented button:last-child {
-  border-right: none;
+.data-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-.segmented button.active {
-  background: var(--accent-bg);
-  color: var(--text-h);
-  font-weight: 600;
-}
-
-.history-selector {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
-  font: inherit;
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 6px 14px;
-  cursor: pointer;
-}
-
-.chip.active {
-  background: var(--accent-bg);
-  border-color: var(--accent-border);
-  color: var(--text-h);
-  font-weight: 600;
-}
-
-.history-warnings {
-  margin: 12px 0;
-  padding-left: 18px;
-  color: #b7791f;
-  font-size: 13px;
-}
-
-.import-box {
-  margin-bottom: 14px;
-}
-
-.import-result {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--text-h);
-}
-
-.cost-src {
-  color: #37b24d;
-  font-weight: 700;
-}
-
-.chart-tooltip {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.chart-tooltip-date {
-  color: var(--text);
-  margin-bottom: 4px;
-  font-weight: 600;
+.data-table tbody tr:hover {
+  background: var(--surface-hover);
 }
 
 .data-table th.num,
@@ -313,25 +244,333 @@
   font-variant-numeric: tabular-nums;
 }
 
-.isin-hint {
-  color: var(--text);
-  font-size: 12px;
-  opacity: 0.7;
+.data-table .th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
 }
 
-/* Excluded instruments stay listed (their history is intact) but read as
-   inactive. */
-.row-excluded {
-  opacity: 0.45;
+.data-table th.num .th-inner {
+  justify-content: flex-end;
 }
 
-.warn-hint {
-  color: #b7791f;
+.cell-primary {
+  font-weight: 550;
+}
+
+.cell-sub {
+  display: block;
   font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.row-excluded {
+  opacity: 0.4;
+}
+
+/* ---------- inputs ---------- */
+
+.input,
+.data-table input[type="text"],
+.field input,
+.field select {
+  font: inherit;
+  font-size: 14px;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  width: 100%;
+  min-width: 0;
+  transition: border-color 0.12s ease;
+}
+
+.input:hover,
+.field input:hover,
+.data-table input[type="text"]:hover {
+  border-color: var(--accent-border);
+}
+
+.input::placeholder,
+.field input::placeholder {
+  color: var(--text-faint);
+}
+
+.data-table input[type="text"] {
+  width: 100%;
+  min-width: 90px;
+}
+
+.data-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Form grid: labels sit above inputs on a shared baseline, so a label
+   that wraps to two lines no longer shifts its input out of alignment. */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--s4);
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  font-size: 12px;
+  color: var(--text-muted);
+  min-height: 2.4em;
+}
+
+.field-suffix {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  font-size: 14px;
+  font-weight: 550;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-sm {
+  font-size: 13px;
+  padding: var(--s1) var(--s3);
+}
+
+/* ---------- segmented control & chips ---------- */
+
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s5);
+  margin-bottom: var(--s4);
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.control-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.segmented {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+  width: fit-content;
+}
+
+.segmented button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: var(--s1) var(--s3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.segmented button:hover {
+  color: var(--text);
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.chip {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: var(--s1) var(--s4);
+  cursor: pointer;
+  font-size: 13px;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.chip:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.chip.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--text);
+  font-weight: 550;
+}
+
+/* ---------- badges ---------- */
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 550;
+  padding: 2px var(--s2);
+  border-radius: 4px;
   white-space: nowrap;
 }
 
-/* Hoverable info tooltip */
+.badge-ok {
+  background: var(--pos-bg);
+  color: var(--pos);
+}
+.badge-manual {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.badge-missing {
+  background: var(--neg-bg);
+  color: var(--neg);
+}
+.badge-neutral {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+/* ---------- states ---------- */
+
+.placeholder {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.error-banner {
+  background: var(--neg-bg);
+  border: 1px solid var(--neg);
+  color: var(--neg);
+  border-radius: var(--radius-sm);
+  padding: var(--s3) var(--s4);
+  font-size: 13px;
+  margin-bottom: var(--s4);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-sm);
+  padding: var(--s3) var(--s4);
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: var(--s4);
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--s7) var(--s5);
+  color: var(--text-muted);
+}
+
+.empty-state-icon {
+  font-size: 28px;
+  display: block;
+  margin-bottom: var(--s3);
+}
+
+.empty-state-title {
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: var(--s2);
+}
+
+/* Skeletons keep layout stable while data loads, instead of a bare
+   "Caricamento…" that shifts everything when content arrives. */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-hover) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius-sm);
+  height: 14px;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* ---------- info tooltip ---------- */
+
 .infotip {
   position: relative;
   display: inline-flex;
@@ -340,15 +579,14 @@
 }
 
 .infotip-icon {
-  color: var(--text);
-  opacity: 0.55;
+  color: var(--text-faint);
   font-size: 12px;
   font-style: normal;
+  line-height: 1;
 }
 
 .infotip:hover .infotip-icon,
 .infotip:focus .infotip-icon {
-  opacity: 1;
   color: var(--accent);
 }
 
@@ -357,13 +595,14 @@
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 10;
+  z-index: 40;
   width: max-content;
-  max-width: 260px;
-  padding: 8px 10px;
-  background: var(--text-h);
-  color: var(--bg);
-  border-radius: 6px;
+  max-width: 280px;
+  padding: var(--s3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 400;
   line-height: 1.45;
@@ -373,7 +612,7 @@
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.12s ease;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .infotip:hover .infotip-bubble,
@@ -382,10 +621,79 @@
   visibility: visible;
 }
 
-/* Nudge the bubble in from the edges for the last table columns. */
+/* Keep the bubble inside the viewport on the last columns. */
 .data-table th:last-child .infotip-bubble,
 .data-table th:nth-last-child(2) .infotip-bubble {
   left: auto;
   right: 0;
   transform: none;
+}
+
+/* ---------- charts ---------- */
+
+.chart-tooltip {
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--s2) var(--s3);
+  font-size: 12px;
+  line-height: 1.6;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.chart-tooltip-date {
+  color: var(--text-muted);
+  margin-bottom: var(--s1);
+  font-weight: 600;
+}
+
+/* ---------- misc ---------- */
+
+.isin-hint {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.hint-warn {
+  color: var(--warn);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .app-main,
+  .app-nav,
+  .app-header-bar {
+    padding-left: var(--s4);
+    padding-right: var(--s4);
+  }
+  .panel {
+    padding: var(--s4);
+  }
+  .table-wrap {
+    margin: 0 calc(-1 * var(--s4));
+    padding: 0 var(--s4);
+  }
+  .metric-hero-value {
+    font-size: 32px;
+  }
 }

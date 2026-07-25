@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
 import { useTransactions } from "../api/hooks";
 import { ImportTransactions } from "../components/ImportTransactions";
+import { amount, money, quantity, shortDate } from "../lib/format";
 
 const SIGN_LABEL: Record<string, string> = { A: "Acquisto", V: "Vendita" };
-
-const eur = (v: number) => v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function TransactionsView() {
   const { data: transactions, isLoading, error } = useTransactions();
@@ -40,7 +39,7 @@ export function TransactionsView() {
   return (
     <div>
       <section className="panel">
-        <h2>Transazioni</h2>
+        <div className="panel-header"><div className="panel-title"><h2>Transazioni</h2></div></div>
         <ImportTransactions />
 
         {(!transactions || transactions.length === 0) && (
@@ -51,7 +50,7 @@ export function TransactionsView() {
 
         {transactions && transactions.length > 0 && (
           <>
-            <div className="history-controls">
+            <div className="controls-row">
               <div className="control-group">
                 <span className="control-label">Strumento</span>
                 <div className="segmented">
@@ -76,21 +75,22 @@ export function TransactionsView() {
               </div>
             </div>
 
-            <div className="summary-cards">
-              <div className="summary-card">
-                <span className="summary-label">Operazioni</span>
-                <span className="summary-value">{totals.count}</span>
+            <div className="metric-grid">
+              <div className="metric">
+                <span className="metric-label">Operazioni</span>
+                <span className="metric-value">{totals.count}</span>
               </div>
-              <div className="summary-card">
-                <span className="summary-label">Investito netto</span>
-                <span className="summary-value">{eur(totals.invested)} EUR</span>
+              <div className="metric">
+                <span className="metric-label">Investito netto</span>
+                <span className="metric-value">{money(totals.invested)}</span>
               </div>
-              <div className="summary-card">
-                <span className="summary-label">Commissioni totali</span>
-                <span className="summary-value">{eur(totals.commissions)} EUR</span>
+              <div className="metric">
+                <span className="metric-label">Commissioni totali</span>
+                <span className="metric-value">{money(totals.commissions)}</span>
               </div>
             </div>
 
+            <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
@@ -106,24 +106,25 @@ export function TransactionsView() {
               <tbody>
                 {rows.map((t) => (
                   <tr key={t.id}>
-                    <td>{new Date(t.trade_date).toLocaleDateString("it-IT")}</td>
+                    <td>{shortDate(t.trade_date)}</td>
                     <td>
                       {t.name}
                       {t.isin ? <span className="isin-hint"> {t.isin}</span> : null}
                     </td>
                     <td>
-                      <span className={`status-badge status-${t.sign === "A" ? "ok" : "manual"}`}>
+                      <span className={`badge ${t.sign === "A" ? "badge-ok" : "badge-manual"}`}>
                         {SIGN_LABEL[t.sign] ?? t.sign}
                       </span>
                     </td>
-                    <td className="num">{t.quantity}</td>
-                    <td className="num">{eur(t.price)}</td>
-                    <td className="num">{eur(t.gross_amount)}</td>
-                    <td className="num">{t.commissions > 0 ? eur(t.commissions) : "—"}</td>
+                    <td className="num">{quantity(t.quantity)}</td>
+                    <td className="num">{amount(t.price)}</td>
+                    <td className="num">{amount(t.gross_amount)}</td>
+                    <td className="num">{t.commissions > 0 ? amount(t.commissions) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           </>
         )}
       </section>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { InstrumentOut, PositionOut } from "../api/hooks";
+import { amount, quantity } from "../lib/format";
 
 interface Props {
   instrument: InstrumentOut;
@@ -7,9 +8,6 @@ interface Props {
   position: PositionOut | null;
   onPatch: (patch: { name?: string; ticker?: string; included?: boolean }) => void;
 }
-
-const num = (v: number, digits = 2) =>
-  v.toLocaleString("it-IT", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 /** One instrument: an include/exclude checkbox, editable name and ticker,
  * and the figures derived from its transactions (read-only — they come
@@ -33,7 +31,7 @@ export function InstrumentRow({ instrument, position, onPatch }: Props) {
       <td>
         <input
           type="text"
-          className="instrument-name-input"
+          className="input"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={() => {
@@ -60,11 +58,11 @@ export function InstrumentRow({ instrument, position, onPatch }: Props) {
             if (trimmed !== (instrument.ticker ?? "")) onPatch({ ticker: trimmed });
           }}
         />
-        {!instrument.ticker && <span className="warn-hint"> prezzi manuali</span>}
+        {!instrument.ticker && <span className="hint-warn"> prezzi manuali</span>}
       </td>
-      <td className="num">{position ? num(position.quantity, 0) : "—"}</td>
-      <td className="num">{position ? num(position.avg_cost) : "—"}</td>
-      <td className="num">{position ? num(position.invested) : "—"}</td>
+      <td className="num">{position ? quantity(position.quantity) : "—"}</td>
+      <td className="num">{position ? amount(position.avg_cost) : "—"}</td>
+      <td className="num">{position ? amount(position.invested) : "—"}</td>
     </tr>
   );
 }
