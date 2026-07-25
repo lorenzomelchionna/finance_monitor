@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { usePortfolioSummary, useRunMontecarlo } from "../api/hooks";
 import { FanChart } from "../components/FanChart";
-import { money } from "../lib/format";
+import { money, percent } from "../lib/format";
+import { InfoTip } from "../components/InfoTip";
 import { extractErrorMessage } from "../lib/apiError";
 import { parseLocaleNumber } from "../lib/number";
 
@@ -15,6 +16,7 @@ export function SimulationView() {
   const [expectedReturn, setExpectedReturn] = useState("7");
   const [volatility, setVolatility] = useState("15");
   const [formError, setFormError] = useState<string | null>(null);
+  const [fatTails, setFatTails] = useState(true);
 
   // Prefill the seed with the current portfolio value once it loads —
   // per the plan's v1 scope: "seed = valore portafoglio attuale".
@@ -42,7 +44,13 @@ export function SimulationView() {
     }
 
     runMontecarlo.mutate(
-      { ...parsed, n_paths: 10000 },
+      {
+        ...parsed,
+        n_paths: 10000,
+        distribution: fatTails ? "student_t" : "normal",
+        // ~5 df matches monthly equity returns empirically.
+        degrees_of_freedom: 5,
+      },
       { onError: (err) => setFormError(extractErrorMessage(err)) },
     );
   }
@@ -61,9 +69,9 @@ export function SimulationView() {
           </div>
         </div>
         <p className="panel-note">
-          Proietta 10.000 possibili traiettorie di un piano di accumulo, assumendo rendimenti
-          lognormali indipendenti. Le bande mostrano il ventaglio di esiti plausibili, non una
-          previsione: la realtà ha code più spesse di questo modello.
+          Proietta 10.000 possibili traiettorie di un piano di accumulo. Le bande mostrano il
+          ventaglio di esiti plausibili, non una previsione. Gli shock mensili sono indipendenti fra
+          loro: il modello non riproduce i periodi in cui i cali si susseguono.
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -101,6 +109,20 @@ export function SimulationView() {
             </div>
           </div>
         </form>
+
+        <div className="controls-row" style={{ marginTop: "var(--s4)", marginBottom: 0 }}>
+          <div className="control-group">
+            <span className="control-label">Distribuzione degli shock</span>
+            <div className="segmented">
+              <button type="button" className={fatTails ? "active" : ""} onClick={() => setFatTails(true)}>
+                Code grasse (t di Student)
+              </button>
+              <button type="button" className={!fatTails ? "active" : ""} onClick={() => setFatTails(false)}>
+                Normale (GBM)
+              </button>
+            </div>
+          </div>
+        </div>
 
         {totalContributed > 0 && (
           <p className="placeholder" style={{ marginTop: "var(--s4)" }}>
@@ -150,6 +172,37 @@ export function SimulationView() {
             <p className="placeholder" style={{ marginTop: "var(--s4)" }}>
               Nel 90% delle traiettorie il valore finale cade fra {money(result.final_p5, "EUR", 0)} e{" "}
               {money(result.final_p95, "EUR", 0)}.
+            </p>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <div className="panel-title"><h2>Rischio lungo il percorso</h2></div>
+            </div>
+            <div className="metric-grid">
+              <div className="metric">
+                <span className="metric-label">
+                  Perdita max tipica <InfoTip text="Massima discesa da un picco, sulla traiettoria mediana. È il calo che con ogni probabilità dovrai sopportare almeno una volta." />
+                </span>
+                <span className="metric-value neg">−{percent(result.median_max_drawdown)}</span>
+              </div>
+              <div className="metric">
+                <span className="metric-label">
+                  Perdita max sfavorevole <InfoTip text="Massima discesa da un picco nel 5% di scenari peggiori. Serve per capire se reggeresti emotivamente il piano." />
+                </span>
+                <span className="metric-value neg">−{percent(result.worst_max_drawdown)}</span>
+              </div>
+              <div className="metric">
+                <span className="metric-label">
+                  Rischio di restare sotto <InfoTip text="Quota di traiettorie che finiscono sotto il totale versato: avresti fatto meglio a tenere i soldi fermi (in termini nominali)." />
+                </span>
+                <span className="metric-value">{percent(result.prob_below_contributed)}</span>
+              </div>
+            </div>
+            <p className="placeholder" style={{ marginTop: "var(--s4)" }}>
+              Il drawdown misura il calo del mercato lungo il percorso, non i versamenti. Le code grasse
+              si vedono soprattutto qui: sul valore finale a 20 anni incidono poco, perché 240 shock
+              mensili si mediano fra loro.
             </p>
           </section>
 

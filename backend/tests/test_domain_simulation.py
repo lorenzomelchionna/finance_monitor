@@ -117,3 +117,63 @@ def test_zero_contribution_and_zero_return_keeps_capital_flat():
 
     assert result.p50[0] == pytest.approx(2_000.0)
     assert result.p50[-1] == pytest.approx(2_000.0)
+
+
+def _params(**overrides):
+    base = dict(
+        seed_capital=10_000.0,
+        monthly_contribution=300.0,
+        years=20,
+        expected_annual_return=0.07,
+        annual_volatility=0.15,
+        n_paths=20_000,
+        random_seed=7,
+    )
+    base.update(overrides)
+    return SimulationParams(**base)
+
+
+def test_student_t_keeps_the_requested_mean_return():
+    """The t branch works in simple-return space precisely so the mean
+    stays finite and calibrated — exp() of a t has no finite mean."""
+    r = run_montecarlo(_params(distribution="student_t"))
+    n = _params().years * 12
+    v = 10_000.0
+    monthly = 1.07 ** (1 / 12) - 1
+    for _ in range(n):
+        v = v * (1 + monthly) + 300.0
+    assert r.final_mean == pytest.approx(v, rel=0.05)
+
+
+def test_student_t_has_fatter_tails_than_normal():
+    """Same mean and volatility, more mass in the extremes: the worst
+    drawdowns get worse. The effect on *terminal* wealth is small because
+    240 monthly shocks average out toward normal (CLT) — the tails show
+    up in the path, which is why drawdown is reported."""
+    normal = run_montecarlo(_params(distribution="normal"))
+    fat = run_montecarlo(_params(distribution="student_t", degrees_of_freedom=3))
+    assert fat.worst_max_drawdown > normal.worst_max_drawdown
+
+
+def test_drawdown_is_a_fraction_and_ordered():
+    r = run_montecarlo(_params())
+    assert 0 <= r.median_max_drawdown <= 1
+    assert 0 <= r.worst_max_drawdown <= 1
+    # The 95th percentile of per-path maxima can't be below the median.
+    assert r.worst_max_drawdown >= r.median_max_drawdown
+
+
+def test_no_drawdown_without_volatility():
+    r = run_montecarlo(_params(annual_volatility=0.0))
+    assert r.median_max_drawdown == pytest.approx(0.0, abs=1e-12)
+
+
+def test_probability_of_ending_below_contributions():
+    r = run_montecarlo(_params())
+    assert 0 <= r.prob_below_contributed <= 1
+    assert r.total_contributed == pytest.approx(10_000.0 + 300.0 * 240)
+
+
+def test_student_t_requires_finite_variance():
+    with pytest.raises(ValueError, match="degrees_of_freedom"):
+        run_montecarlo(_params(distribution="student_t", degrees_of_freedom=2.0))

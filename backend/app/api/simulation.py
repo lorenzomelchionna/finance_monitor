@@ -19,6 +19,8 @@ def montecarlo(payload: MonteCarloRequest) -> MonteCarloResponse:
             annual_volatility=payload.annual_volatility,
             n_paths=payload.n_paths,
             random_seed=payload.random_seed,
+            distribution=payload.distribution,
+            degrees_of_freedom=payload.degrees_of_freedom,
         )
     )
     return MonteCarloResponse(**asdict(result))

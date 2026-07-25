@@ -432,6 +432,17 @@ export interface components {
             n_paths: number;
             /** Random Seed */
             random_seed?: number | null;
+            /**
+             * Distribution
+             * @default student_t
+             * @enum {string}
+             */
+            distribution: "normal" | "student_t";
+            /**
+             * Degrees Of Freedom
+             * @default 5
+             */
+            degrees_of_freedom: number;
         };
         /** MonteCarloResponse */
         MonteCarloResponse: {
@@ -455,6 +466,14 @@ export interface components {
             final_p5: number;
             /** Final P95 */
             final_p95: number;
+            /** Prob Below Contributed */
+            prob_below_contributed: number;
+            /** Total Contributed */
+            total_contributed: number;
+            /** Median Max Drawdown */
+            median_max_drawdown: number;
+            /** Worst Max Drawdown */
+            worst_max_drawdown: number;
         };
         /** PortfolioHistoryOut */
         PortfolioHistoryOut: {

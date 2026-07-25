@@ -223,10 +223,12 @@
   white-space: nowrap;
 }
 
+/* No `color` here on purpose: `.data-table td` would out-specify the
+   semantic `.pos` / `.neg` classes (0-1-1 vs 0-1-0) and silently repaint
+   every gain and loss in the default text colour. Cells inherit instead. */
 .data-table td {
   padding: var(--s3);
   border-bottom: 1px solid var(--border);
-  color: var(--text);
   vertical-align: middle;
 }
 
