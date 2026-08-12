@@ -30,6 +30,22 @@ def get_portfolio_history(session: Session) -> dict:
     quantities: dict[int, float] = {p.instrument.id: p.quantity for p in derived}
     instruments = {p.instrument.id: p.instrument for p in derived}
 
+    all_txn_likes = [
+        TxnLike(
+            instrument_id=t.instrument_id,
+            trade_date=t.trade_date,
+            sign=t.sign.value,
+            quantity=t.quantity,
+            price=t.price,
+            gross_amount=t.gross_amount,
+            commissions=t.commissions,
+        )
+        for t in session.exec(select(Transaction)).all()
+    ]
+    txns_by_instrument: dict[int, list[TxnLike]] = defaultdict(list)
+    for t in all_txn_likes:
+        txns_by_instrument[t.instrument_id].append(t)
+
     series_out: list[dict] = []
     warnings: list[str] = []
     aggregate_input: dict[int, list[tuple[str, float]]] = {}
@@ -46,13 +62,44 @@ def get_portfolio_history(session: Session) -> dict:
             continue
 
         pairs = [(p.date, p.close) for p in points]
+        instrument_txns = txns_by_instrument.get(iid, [])
+        # No ledger for this instrument (e.g. manual-price-only holding) ->
+        # leave invested unset rather than a misleading flat 0.0.
+        invested_series: list[float | None] = (
+            cumulative_invested(instrument_txns, [d for d, _ in pairs])
+            if instrument_txns
+            else [None] * len(pairs)
+        )
+        # Position value (held qty * close) for this instrument alone —
+        # comparable to `invested` for a gain %. `close` itself is a
+        # per-unit price and NOT comparable to total € invested (dividing
+        # one by the other produces nonsense like -90%). Reuses
+        # actual_portfolio_value with a single-instrument input; it
+        # naturally returns nothing before the first purchase.
+        instrument_deltas = [
+            (t.trade_date.isoformat(), t.quantity if t.sign == "A" else -t.quantity)
+            for t in instrument_txns
+        ]
+        position_value_by_date: dict[str, float] = (
+            {vp.date: vp.value for vp in actual_portfolio_value({iid: pairs}, {iid: instrument_deltas})}
+            if instrument_deltas
+            else {}
+        )
         series_out.append(
             {
                 "instrument_id": iid,
                 "name": instrument.name,
                 "ticker": instrument.ticker,
                 "currency": instrument.currency,
-                "points": [{"date": d, "close": c} for d, c in pairs],
+                "points": [
+                    {
+                        "date": d,
+                        "close": c,
+                        "invested": inv,
+                        "position_value": position_value_by_date.get(d),
+                    }
+                    for (d, c), inv in zip(pairs, invested_series)
+                ],
             }
         )
 
@@ -65,19 +112,7 @@ def get_portfolio_history(session: Session) -> dict:
             )
 
     aggregated_ids = set(aggregate_input.keys())
-    txn_likes = [
-        TxnLike(
-            instrument_id=t.instrument_id,
-            trade_date=t.trade_date,
-            sign=t.sign.value,
-            quantity=t.quantity,
-            price=t.price,
-            gross_amount=t.gross_amount,
-            commissions=t.commissions,
-        )
-        for t in session.exec(select(Transaction)).all()
-        if t.instrument_id in aggregated_ids
-    ]
+    txn_likes = [t for t in all_txn_likes if t.instrument_id in aggregated_ids]
 
     # With a ledger available, reconstruct the *actual* value over time
     # (quantity held at each date) so it lines up with cumulative

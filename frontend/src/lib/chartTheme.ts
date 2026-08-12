@@ -26,6 +26,9 @@ export const chart = {
   get pos() {
     return cssVar("--pos", "#3ddc97");
   },
+  get neg() {
+    return cssVar("--neg", "#ff6b81");
+  },
   get muted() {
     return cssVar("--text-muted", "#9aa3b2");
   },

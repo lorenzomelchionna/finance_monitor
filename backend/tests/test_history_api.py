@@ -106,3 +106,40 @@ def test_portfolio_history_warns_on_unresolved_and_non_base_currency(monkeypatch
         assert any("Unresolved" in w for w in body["warnings"])
     finally:
         app.dependency_overrides.clear()
+
+
+def test_portfolio_history_per_instrument_invested(monkeypatch):
+    client, engine = _client_with_fresh_db()
+    try:
+        with Session(engine) as s:
+            a = Instrument(ticker="AAA", name="Alpha", currency="EUR")
+            s.add(a)
+            s.commit()
+            s.refresh(a)
+            # First buy lands on the second history date, so the first
+            # point has no capital invested yet (the 0.0-before-first-buy
+            # case, not a divide-by-zero — cumulative_invested never
+            # divides).
+            s.add(buy(a, 1, 105.0, on=date(2020, 1, 2)))
+            s.commit()
+
+        fake = FakeHistoryProvider({
+            "AAA": [
+                HistoryPoint("2020-01-01", 100.0),
+                HistoryPoint("2020-01-02", 105.0),
+                HistoryPoint("2020-01-03", 110.0),
+            ],
+        })
+        monkeypatch.setitem(registry._HISTORY_PROVIDERS, "yfinance", fake)
+
+        body = client.get("/api/portfolio/history").json()
+
+        points = body["series"][0]["points"]
+        assert [p["invested"] for p in points] == [0.0, 105.0, 105.0]
+        # position_value (qty held * close) is comparable to `invested` for
+        # a gain %, unlike `close` itself. None before the first purchase
+        # (actual_portfolio_value starts there by construction, not a
+        # divide-by-zero guard), then qty(1) * close.
+        assert [p["position_value"] for p in points] == [None, 105.0, 110.0]
+    finally:
+        app.dependency_overrides.clear()

@@ -49,12 +49,34 @@ export function HistoryView() {
     [rawPoints, horizon, smoothing],
   );
 
-  // Cumulative-invested overlay (portfolio aggregate only). Sliced to the
-  // horizon but never smoothed — it's a capital step function, not a
-  // price to be averaged.
+  // Cumulative-invested overlay, for both the portfolio aggregate and a
+  // single-instrument drill-down. Sliced to the horizon but never
+  // smoothed — it's a capital step function, not a price to be averaged.
   const investedPoints: TsPoint[] | undefined = useMemo(() => {
-    if (!data || selection !== "portfolio") return undefined;
-    const raw = data.portfolio.map((p) => ({ date: p.date, value: p.invested }));
+    if (!data) return undefined;
+    if (selection === "portfolio") {
+      const raw = data.portfolio.map((p) => ({ date: p.date, value: p.invested }));
+      return sliceByHorizon(raw, horizon);
+    }
+    const series = data.series.find((s) => s.instrument_id === selection);
+    if (!series) return undefined;
+    const raw = series.points
+      .filter((p) => p.invested != null)
+      .map((p) => ({ date: p.date, value: p.invested as number }));
+    return sliceByHorizon(raw, horizon);
+  }, [data, selection, horizon]);
+
+  // Actual position value (qty held * close) for a single-instrument
+  // drill-down — comparable to investedPoints for a gain %, unlike the
+  // per-unit `close` price plotted in `points`. Not needed for the
+  // portfolio aggregate: there `points[].value` already IS the € value.
+  const gainBasisPoints: TsPoint[] | undefined = useMemo(() => {
+    if (!data || selection === "portfolio") return undefined;
+    const series = data.series.find((s) => s.instrument_id === selection);
+    if (!series) return undefined;
+    const raw = series.points
+      .filter((p) => p.position_value != null)
+      .map((p) => ({ date: p.date, value: p.position_value as number }));
     return sliceByHorizon(raw, horizon);
   }, [data, selection, horizon]);
 
@@ -160,6 +182,7 @@ export function HistoryView() {
           points={points}
           markers={markers}
           investedPoints={investedPoints}
+          gainBasisPoints={gainBasisPoints}
           unit={selection === "portfolio" ? baseCurrency : undefined}
         />
         {showBuys && markers.length > 0 && (

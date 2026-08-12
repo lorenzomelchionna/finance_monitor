@@ -322,6 +322,10 @@ export interface components {
             date: string;
             /** Close */
             close: number;
+            /** Invested */
+            invested?: number | null;
+            /** Position Value */
+            position_value?: number | null;
         };
         /** ImportResultOut */
         ImportResultOut: {

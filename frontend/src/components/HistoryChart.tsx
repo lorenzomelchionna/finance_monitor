@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { axisProps, chart, gridProps, noAnimation } from "../lib/chartTheme";
-import { amount, compact, money, shortDate } from "../lib/format";
+import { amount, compact, money, percent, shortDate, signedMoney, signedPercent } from "../lib/format";
 import type { TsPoint } from "../lib/timeseries";
 
 export interface BuyMarker {
@@ -26,6 +26,17 @@ interface Props {
   markers?: BuyMarker[];
   /** Cumulative-invested step line, for the portfolio view. */
   investedPoints?: TsPoint[];
+  /**
+   * Value series to compare against `investedPoints` for the gain/gainPct
+   * line — NOT necessarily the same as `points`. For the portfolio
+   * aggregate, `points[].value` already IS the position's € value, so this
+   * can be omitted. For a single-instrument drill-down, `points[].value`
+   * is the raw per-unit close price (kept so the chart can show price
+   * history predating any purchase) — comparing that directly to €
+   * invested produces nonsense, so pass the instrument's actual position
+   * value (qty held * close) here instead.
+   */
+  gainBasisPoints?: TsPoint[];
   unit?: string;
   color?: string;
 }
@@ -59,7 +70,9 @@ function pickTicks(points: TsPoint[], max = 8): string[] {
 interface ChartTooltipProps {
   active?: boolean;
   label?: string | number;
-  payload?: { payload?: { marker?: BuyMarker; value?: number; invested?: number } }[];
+  payload?: {
+    payload?: { marker?: BuyMarker; value?: number; invested?: number; gainValue?: number };
+  }[];
   unit?: string;
 }
 
@@ -77,6 +90,15 @@ function ChartTooltip({ active, payload, label, unit }: ChartTooltipProps) {
   }
   if (row?.invested != null && Number.isFinite(row.invested)) {
     lines.push({ key: "invested", color: chart.muted, text: `Investito ${fmt(row.invested)}` });
+  }
+  if (row?.gainValue != null && row?.invested != null && row.invested > 0) {
+    const gainEur = row.gainValue - row.invested;
+    const gainPct = gainEur / row.invested;
+    lines.push({
+      key: "gain",
+      color: gainEur >= 0 ? chart.pos : chart.neg,
+      text: `P/L ${signedMoney(gainEur, unit ?? "EUR")} (${signedPercent(gainPct)})`,
+    });
   }
   if (row?.marker) {
     lines.push({
@@ -99,7 +121,14 @@ function ChartTooltip({ active, payload, label, unit }: ChartTooltipProps) {
   );
 }
 
-export function HistoryChart({ points, markers = [], investedPoints, unit, color }: Props) {
+export function HistoryChart({
+  points,
+  markers = [],
+  investedPoints,
+  gainBasisPoints,
+  unit,
+  color,
+}: Props) {
   if (points.length === 0) {
     return <p className="placeholder">Nessun dato per l'orizzonte selezionato.</p>;
   }
@@ -107,15 +136,31 @@ export function HistoryChart({ points, markers = [], investedPoints, unit, color
   const lineColor = color ?? chart.accent;
   const markerByDate = new Map(markers.map((m) => [m.date, m]));
   const investedByDate = new Map((investedPoints ?? []).map((p) => [p.date, p.value]));
+  const gainBasisByDate = gainBasisPoints
+    ? new Map(gainBasisPoints.map((p) => [p.date, p.value]))
+    : null;
 
   const data = points.map((p) => {
     const m = markerByDate.get(p.date);
+    const invested = investedByDate.get(p.date);
+    // Value to compare against `invested` — the portfolio aggregate's
+    // `value` already is a € position value, but a single instrument's
+    // `value` is a per-unit price (see gainBasisPoints doc on Props).
+    const gainValue = gainBasisByDate ? gainBasisByDate.get(p.date) : p.value;
+    // undefined (not 0/Infinity) before the first contribution, so
+    // Recharts (connectNulls) skips the gap instead of plotting a spike.
+    const gainPct =
+      invested != null && invested > 0 && gainValue != null
+        ? (gainValue - invested) / invested
+        : undefined;
     return {
       date: p.date,
       value: p.value,
       buy: m ? m.value : undefined,
       marker: m,
-      invested: investedByDate.get(p.date),
+      invested,
+      gainValue,
+      gainPct,
     };
   });
 
@@ -146,6 +191,16 @@ export function HistoryChart({ points, markers = [], investedPoints, unit, color
           domain={["auto", "auto"]}
           {...axisProps}
         />
+        {hasInvested && (
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            tickFormatter={(v) => percent(Number(v))}
+            width={52}
+            domain={["auto", "auto"]}
+            {...axisProps}
+          />
+        )}
         <Tooltip
           content={<ChartTooltip unit={unit} />}
           cursor={{ stroke: chart.grid, strokeWidth: 1 }}
@@ -183,6 +238,18 @@ export function HistoryChart({ points, markers = [], investedPoints, unit, color
           name="Valore"
           {...noAnimation}
         />
+        {hasInvested && (
+          <Line
+            yAxisId="right"
+            dataKey="gainPct"
+            stroke={chart.pos}
+            strokeWidth={1.5}
+            dot={false}
+            name="Rendimento %"
+            connectNulls
+            {...noAnimation}
+          />
+        )}
         <Scatter dataKey="buy" fill="#ff6b81" name="Acquisto" {...noAnimation} />
       </ComposedChart>
     </ResponsiveContainer>
