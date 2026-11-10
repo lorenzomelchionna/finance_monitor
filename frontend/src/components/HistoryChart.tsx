@@ -24,19 +24,9 @@ export interface BuyMarker {
 interface Props {
   points: TsPoint[];
   markers?: BuyMarker[];
-  /** Cumulative-invested step line, for the portfolio view. */
+  /** Cumulative-invested step line. `points` must be a € value held (not
+   * a per-unit price) for the gain/gain% comparison to make sense. */
   investedPoints?: TsPoint[];
-  /**
-   * Value series to compare against `investedPoints` for the gain/gainPct
-   * line — NOT necessarily the same as `points`. For the portfolio
-   * aggregate, `points[].value` already IS the position's € value, so this
-   * can be omitted. For a single-instrument drill-down, `points[].value`
-   * is the raw per-unit close price (kept so the chart can show price
-   * history predating any purchase) — comparing that directly to €
-   * invested produces nonsense, so pass the instrument's actual position
-   * value (qty held * close) here instead.
-   */
-  gainBasisPoints?: TsPoint[];
   unit?: string;
   color?: string;
 }
@@ -70,9 +60,7 @@ function pickTicks(points: TsPoint[], max = 8): string[] {
 interface ChartTooltipProps {
   active?: boolean;
   label?: string | number;
-  payload?: {
-    payload?: { marker?: BuyMarker; value?: number; invested?: number; gainValue?: number };
-  }[];
+  payload?: { payload?: { marker?: BuyMarker; value?: number; invested?: number } }[];
   unit?: string;
 }
 
@@ -91,8 +79,8 @@ function ChartTooltip({ active, payload, label, unit }: ChartTooltipProps) {
   if (row?.invested != null && Number.isFinite(row.invested)) {
     lines.push({ key: "invested", color: chart.muted, text: `Investito ${fmt(row.invested)}` });
   }
-  if (row?.gainValue != null && row?.invested != null && row.invested > 0) {
-    const gainEur = row.gainValue - row.invested;
+  if (row?.value != null && row?.invested != null && row.invested > 0) {
+    const gainEur = row.value - row.invested;
     const gainPct = gainEur / row.invested;
     lines.push({
       key: "gain",
@@ -121,14 +109,7 @@ function ChartTooltip({ active, payload, label, unit }: ChartTooltipProps) {
   );
 }
 
-export function HistoryChart({
-  points,
-  markers = [],
-  investedPoints,
-  gainBasisPoints,
-  unit,
-  color,
-}: Props) {
+export function HistoryChart({ points, markers = [], investedPoints, unit, color }: Props) {
   if (points.length === 0) {
     return <p className="placeholder">Nessun dato per l'orizzonte selezionato.</p>;
   }
@@ -136,30 +117,19 @@ export function HistoryChart({
   const lineColor = color ?? chart.accent;
   const markerByDate = new Map(markers.map((m) => [m.date, m]));
   const investedByDate = new Map((investedPoints ?? []).map((p) => [p.date, p.value]));
-  const gainBasisByDate = gainBasisPoints
-    ? new Map(gainBasisPoints.map((p) => [p.date, p.value]))
-    : null;
 
   const data = points.map((p) => {
     const m = markerByDate.get(p.date);
     const invested = investedByDate.get(p.date);
-    // Value to compare against `invested` — the portfolio aggregate's
-    // `value` already is a € position value, but a single instrument's
-    // `value` is a per-unit price (see gainBasisPoints doc on Props).
-    const gainValue = gainBasisByDate ? gainBasisByDate.get(p.date) : p.value;
     // undefined (not 0/Infinity) before the first contribution, so
     // Recharts (connectNulls) skips the gap instead of plotting a spike.
-    const gainPct =
-      invested != null && invested > 0 && gainValue != null
-        ? (gainValue - invested) / invested
-        : undefined;
+    const gainPct = invested != null && invested > 0 ? (p.value - invested) / invested : undefined;
     return {
       date: p.date,
       value: p.value,
       buy: m ? m.value : undefined,
       marker: m,
       invested,
-      gainValue,
       gainPct,
     };
   });

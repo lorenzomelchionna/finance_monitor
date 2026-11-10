@@ -33,15 +33,20 @@ export function HistoryView() {
 
   const baseCurrency = data?.base_currency ?? "EUR";
 
-  // Raw series for the current selection (portfolio aggregate or one
-  // instrument), before horizon slicing / smoothing.
+  // Raw series for the current selection, before horizon slicing /
+  // smoothing. Both views plot the € value actually held (qty * price),
+  // not a per-unit price — so a single instrument's line starts at its
+  // first purchase, same as the aggregate.
   const rawPoints: TsPoint[] = useMemo(() => {
     if (!data) return [];
     if (selection === "portfolio") {
       return data.portfolio.map((p) => ({ date: p.date, value: p.value }));
     }
     const series = data.series.find((s) => s.instrument_id === selection);
-    return series ? series.points.map((p) => ({ date: p.date, value: p.close })) : [];
+    if (!series) return [];
+    return series.points
+      .filter((p) => p.position_value != null)
+      .map((p) => ({ date: p.date, value: p.position_value as number }));
   }, [data, selection]);
 
   const points = useMemo(
@@ -63,20 +68,6 @@ export function HistoryView() {
     const raw = series.points
       .filter((p) => p.invested != null)
       .map((p) => ({ date: p.date, value: p.invested as number }));
-    return sliceByHorizon(raw, horizon);
-  }, [data, selection, horizon]);
-
-  // Actual position value (qty held * close) for a single-instrument
-  // drill-down — comparable to investedPoints for a gain %, unlike the
-  // per-unit `close` price plotted in `points`. Not needed for the
-  // portfolio aggregate: there `points[].value` already IS the € value.
-  const gainBasisPoints: TsPoint[] | undefined = useMemo(() => {
-    if (!data || selection === "portfolio") return undefined;
-    const series = data.series.find((s) => s.instrument_id === selection);
-    if (!series) return undefined;
-    const raw = series.points
-      .filter((p) => p.position_value != null)
-      .map((p) => ({ date: p.date, value: p.position_value as number }));
     return sliceByHorizon(raw, horizon);
   }, [data, selection, horizon]);
 
@@ -182,8 +173,11 @@ export function HistoryView() {
           points={points}
           markers={markers}
           investedPoints={investedPoints}
-          gainBasisPoints={gainBasisPoints}
-          unit={selection === "portfolio" ? baseCurrency : undefined}
+          unit={
+            selection === "portfolio"
+              ? baseCurrency
+              : data?.series.find((s) => s.instrument_id === selection)?.currency
+          }
         />
         {showBuys && markers.length > 0 && (
           <p className="placeholder" style={{ marginTop: "var(--s2)" }}>
@@ -224,8 +218,8 @@ export function HistoryView() {
           </ul>
         )}
         <p className="placeholder">
-          L'aggregato parte dalla data in cui tutti gli strumenti in portafoglio hanno dati; le viste
-          per singolo prodotto mostrano invece l'intero storico disponibile.
+          Sia l'aggregato sia le viste per singolo prodotto mostrano il valore effettivamente
+          detenuto (quote × prezzo), a partire dal primo acquisto.
         </p>
       </section>
     </div>
