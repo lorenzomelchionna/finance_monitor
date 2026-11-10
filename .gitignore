@@ -11,3 +11,6 @@ backend/.env
 
 # DB backups
 backend/data/*.bak*
+
+# Railway IaC SDK (root package.json)
+node_modules/
